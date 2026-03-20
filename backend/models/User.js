@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const mongooseErrorPlugin = require('../utils/mongooseErrorPlugin');
 
 const userSchema = new mongoose.Schema({
   firstName: {
@@ -30,7 +32,10 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['jobseeker', 'recruiter', 'admin'],
+    enum: {
+      values: ['jobseeker', 'recruiter', 'admin'],
+      message: 'Role must be one of: jobseeker, recruiter, admin'
+    },
     default: 'jobseeker'
   },
   profile: {
@@ -105,9 +110,10 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  emailVerificationToken: String,
-  passwordResetToken: String,
-  passwordResetExpires: Date,
+  emailVerificationToken: { type: String, select: false },
+  passwordResetToken: { type: String, select: false },
+  passwordResetExpires: { type: Date, select: false },
+  refreshToken: { type: String, select: false },
   lastLogin: Date,
 }, {
   timestamps: true
@@ -131,6 +137,20 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
+// Generate password reset token
+userSchema.methods.generatePasswordResetToken = function() {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+  
+  return resetToken;
+};
+
 // Get full name method
 userSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
@@ -141,5 +161,8 @@ userSchema.index({ firstName: 'text', lastName: 'text', email: 'text' });
 userSchema.index({ 'profile.skills': 1 });
 userSchema.index({ 'profile.location': 1 });
 userSchema.index({ role: 1 });
+
+// Apply mongoose error plugin
+userSchema.plugin(mongooseErrorPlugin);
 
 module.exports = mongoose.model('User', userSchema);

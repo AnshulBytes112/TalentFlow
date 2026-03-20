@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const mongooseErrorPlugin = require('../utils/mongooseErrorPlugin');
 
 const jobSchema = new mongoose.Schema({
   title: {
@@ -162,10 +163,68 @@ jobSchema.methods.incrementViewCount = function() {
   return this.save();
 };
 
-// Method to increment application count
-jobSchema.methods.incrementApplicationCount = function() {
-  this.applicationCount += 1;
-  return this.save();
+// Pre-find hook to filter out expired jobs
+jobSchema.pre(/^find/, function(next) {
+  // Only filter for active jobs queries
+  if (this.getQuery().status === 'active') {
+    this.find({ expiryDate: { $gt: new Date() } });
+  }
+  next();
+});
+
+// Static method to find active jobs with filters
+jobSchema.statics.findActiveJobs = function(filters = {}) {
+  const query = {
+    status: 'active',
+    expiryDate: { $gt: new Date() },
+    ...filters
+  };
+
+  // Text search if search term is provided
+  if (filters.search) {
+    query.$text = { $search: filters.search };
+    delete query.search;
+  }
+
+  // Location filter
+  if (filters.location) {
+    query.location = { $regex: filters.location, $options: 'i' };
+  }
+
+  // Job type filter
+  if (filters.type) {
+    query.type = filters.type;
+  }
+
+  // Category filter
+  if (filters.category) {
+    query.category = filters.category;
+  }
+
+  // Experience filter
+  if (filters.experience) {
+    query.experience = filters.experience;
+  }
+
+  // Skills filter (any of the provided skills)
+  if (filters.skills && Array.isArray(filters.skills)) {
+    query.skills = { $in: filters.skills };
+  }
+
+  // Salary range filter
+  if (filters.minSalary) {
+    query['salary.min'] = { $gte: filters.minSalary };
+  }
+  if (filters.maxSalary) {
+    query['salary.max'] = { $lte: filters.maxSalary };
+  }
+
+  return this.find(query)
+    .populate('postedBy', 'firstName lastName email')
+    .sort({ featured: -1, createdAt: -1 });
 };
+
+// Apply mongoose error plugin
+jobSchema.plugin(mongooseErrorPlugin);
 
 module.exports = mongoose.model('Job', jobSchema);

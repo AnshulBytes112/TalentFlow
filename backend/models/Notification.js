@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const mongooseErrorPlugin = require('../utils/mongooseErrorPlugin');
 
 const notificationSchema = new mongoose.Schema({
   recipient: {
@@ -94,7 +95,7 @@ const notificationSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes
+// Indexes for pagination and performance
 notificationSchema.index({ recipient: 1, status: 1 });
 notificationSchema.index({ recipient: 1, createdAt: -1 });
 notificationSchema.index({ type: 1 });
@@ -102,9 +103,34 @@ notificationSchema.index({ scheduledFor: 1 });
 notificationSchema.index({ expiresAt: 1 });
 notificationSchema.index({ priority: 1 });
 
+// Compound indexes for efficient pagination queries
+notificationSchema.index({ recipient: 1, status: 1, createdAt: -1 });
+notificationSchema.index({ type: 1, createdAt: -1 });
+
 // Virtual for checking if notification is expired
 notificationSchema.virtual('isExpired').get(function() {
   return this.expiresAt && this.expiresAt < new Date();
+});
+
+// Computed at read time, not stored - prevents stale data
+notificationSchema.virtual('timeAgo').get(function() {
+  const now = new Date();
+  const diffTime = now - this.createdAt;
+  const diffMinutes = Math.floor(diffTime / (1000 * 60));
+  const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffMinutes < 1) {
+    return 'Just now';
+  } else if (diffMinutes < 60) {
+    return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+  } else if (diffHours < 24) {
+    return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  } else if (diffDays < 7) {
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  } else {
+    return this.createdAt.toLocaleDateString();
+  }
 });
 
 // Method to mark as read
@@ -152,5 +178,8 @@ notificationSchema.pre('save', function(next) {
   }
   next();
 });
+
+// Apply mongoose error plugin
+notificationSchema.plugin(mongooseErrorPlugin);
 
 module.exports = mongoose.model('Notification', notificationSchema);

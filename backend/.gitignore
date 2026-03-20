@@ -1,0 +1,196 @@
+# Backend specific ignores
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.staging
+.env.qa
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pm2.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env.test
+
+# Temporary upload folders
+uploads/
+temp_uploads/
+tmp/
+static/uploads/
+
+# Database files
+*.sqlite
+*.db
+*.sqlite3
+data/
+db/
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# SSL certificates and keys
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.csr
+certs/
+ssl/
+jwt/
+jwt-keys/
+
+# API keys and secrets
+secrets/
+credentials/
+private/
+config/secrets.json
+config/keys.json
+config/local.json
+config/production.json
+
+# Test files
+test-results/
+coverage/
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# PM2 logs and configs
+pm2.log
+ecosystem.config.js.backup
+.pm2/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# Redis dump
+dump.rdb
+
+# MongoDB data
+data/
+db/
+
+# Email templates (if containing sensitive data)
+email-templates/private/
+templates/private/
+
+# Cloudinary temporary files
+.cloudinary/
+cloudinary-temp/
+
+# AWS/Cloud credentials
+.aws/
+.aws-credentials
+gcp-credentials.json
+service-account-key.json
+azure-credentials.json
+
+# Payment processor keys
+stripe-keys.json
+paypal-keys.json
+
+# Email service keys
+sendgrid-keys.json
+mailgun-keys.json
+
+# Social media API keys
+facebook-keys.json
+twitter-keys.json
+linkedin-keys.json
+
+# Monitoring and logging
+datadog-keys.json
+newrelic-keys.json
+loggly-keys.json
+
+# Database connection strings
+database-urls.json
+connection-strings.json
+
+# Third-party service configurations
+third-party-config.json
+services-config.json
+
+# Session storage
+sessions/
+session-store/
+
+# File uploads with sensitive data
+user-uploads/
+resume-uploads/
+document-uploads/
+
+# Backup and migration files
+backups/
+migrations/backups/
+
+# Configuration files with secrets
+config/database.js
+config/email.js
+config/payment.js
+config/social.js
+
+# Analytics and tracking
+google-analytics.json
+segment-keys.json
