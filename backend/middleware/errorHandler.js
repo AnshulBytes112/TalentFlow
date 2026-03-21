@@ -1,100 +1,114 @@
 const { ApiError } = require('../utils/ApiError');
 
-// Global error handler middleware
+/**
+ * Global Express error handler for MongoDB + Mongoose stack
+ */
 const errorHandler = (err, req, res, next) => {
-  let error = { ...err };
-  error.message = err.message;
-
-  // Log error
-  console.error('Error:', err);
-
-  // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    const message = Object.values(err.errors).map(val => val.message).join(', ');
-    error = new ApiError(400, message);
+  // 1. ApiError instances (err instanceof ApiError)
+  if (err instanceof ApiError) {
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+      errors: err.errors
+    });
   }
 
-  // Mongoose duplicate key error
+  // 2. Mongoose Duplicate Key (err.code === 11000)
   if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
-    const value = err.keyValue[field];
-    error = new ApiError(400, `Duplicate field value: ${field} with value: ${value}. Please use another value.`);
+    const field = Object.keys(err.keyPattern)[0];
+    return res.status(409).json({
+      success: false,
+      message: `${field} already exists`
+    });
   }
 
-  // Mongoose cast error
+  // 3. Mongoose CastError (err.name === 'CastError')
   if (err.name === 'CastError') {
-    error = new ApiError(400, 'Resource not found');
+    return res.status(404).json({
+      success: false,
+      message: 'Resource not found'
+    });
   }
 
-  // JWT errors
-  if (err.name === 'JsonWebTokenError') {
-    error = new ApiError(401, 'Invalid token');
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    error = new ApiError(401, 'Token expired');
-  }
-
-  // Multer errors
-  if (err.code === 'LIMIT_FILE_SIZE') {
-    error = new ApiError(400, 'File size too large');
-  }
-
-  if (err.code === 'LIMIT_FILE_COUNT') {
-    error = new ApiError(400, 'Too many files');
-  }
-
-  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-    error = new ApiError(400, 'Unexpected file field');
-  }
-
-  // Cloudinary errors
-  if (err.message && err.message.includes('Cloudinary')) {
-    error = new ApiError(500, 'File upload failed');
-  }
-
-  // Email errors
-  if (err.message && err.message.includes('Email')) {
-    error = new ApiError(500, 'Email sending failed');
-  }
-
-  // Default error
-  const statusCode = error.statusCode || 500;
-  const message = error.message || 'Internal Server Error';
-
-  // Don't expose stack trace in production
-  const response = {
-    success: false,
-    error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  };
-
-  // Add validation errors if they exist
-  if (err.errors) {
-    response.errors = Object.values(err.errors).map(error => ({
-      field: error.path,
-      message: error.message
+  // 4. Mongoose ValidationError (err.name === 'ValidationError')
+  if (err.name === 'ValidationError') {
+    const fieldErrors = Object.values(err.errors).map(e => ({
+      field: e.path,
+      message: e.message
     }));
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: fieldErrors
+    });
   }
 
-  res.status(statusCode).json(response);
+  // 5. JWT JsonWebTokenError (err.name === 'JsonWebTokenError')
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid token'
+    });
+  }
+
+  // 6. JWT TokenExpiredError (err.name === 'TokenExpiredError')
+  if (err.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Token has expired. Please login again'
+    });
+  }
+
+  // 7. Multer file size error (err.code === 'LIMIT_FILE_SIZE')
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      success: false,
+      message: 'File too large. Maximum size is 5MB'
+    });
+  }
+
+  // 8. Multer unexpected field (err.code === 'LIMIT_UNEXPECTED_FILE')
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({
+      success: false,
+      message: 'Unexpected file field'
+    });
+  }
+
+  // 9. express-validator errors (err.type === 'validation')
+  if (err.type === 'validation') {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: err.errors
+    });
+  }
+
+  // 10. All other errors (fallback)
+  console.error('Unhandled error:', err);
+
+  if (process.env.NODE_ENV === 'production') {
+    // In production: return 500 with generic message, never leak stack
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  } else {
+    // In development: return 500 with err.message + err.stack for debugging
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+      stack: err.stack
+    });
+  }
 };
 
-// Async error wrapper
-const asyncHandler = (fn) => {
-  return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
-};
-
-// 404 handler
+/**
+ * 404 handler for undefined routes
+ */
 const notFound = (req, res, next) => {
   const error = new ApiError(404, `Route ${req.originalUrl} not found`);
   next(error);
 };
 
-module.exports = {
-  errorHandler,
-  asyncHandler,
-  notFound,
-};
+module.exports = errorHandler;

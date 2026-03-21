@@ -1,40 +1,50 @@
 const { validationResult } = require('express-validator');
 const { ApiError } = require('../utils/ApiError');
 
-// Validation middleware
+/**
+ * Check express-validator result, throw ApiError.badRequest() with all field errors if any
+ */
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   
   if (!errors.isEmpty()) {
-    const errorMessages = errors.array().map(error => error.msg);
-    return next(new ApiError(400, `Validation failed: ${errorMessages.join(', ')}`));
+    const fieldErrors = errors.array().map(error => ({
+      field: error.path || error.param,
+      message: error.msg
+    }));
+    
+    return next(ApiError.badRequest('Validation failed', fieldErrors));
   }
   
   next();
 };
 
-// Custom validation for file uploads
+/**
+ * Custom validation for file uploads
+ */
 const validateFileUpload = (allowedTypes = [], maxSize = 5 * 1024 * 1024) => {
   return (req, res, next) => {
     if (!req.file) {
-      return next(new ApiError(400, 'File is required'));
+      return next(ApiError.badRequest('File is required'));
     }
 
     // Check file type
     if (allowedTypes.length > 0 && !allowedTypes.includes(req.file.mimetype)) {
-      return next(new ApiError(400, `Invalid file type. Allowed types: ${allowedTypes.join(', ')}`));
+      return next(ApiError.badRequest(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`));
     }
 
     // Check file size
     if (req.file.size > maxSize) {
-      return next(new ApiError(400, `File size too large. Maximum size: ${maxSize / 1024 / 1024}MB`));
+      return next(ApiError.badRequest(`File size too large. Maximum size: ${maxSize / 1024 / 1024}MB`));
     }
 
     next();
   };
 };
 
-// Validate pagination parameters
+/**
+ * Validate pagination parameters
+ */
 const validatePagination = (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -43,17 +53,17 @@ const validatePagination = (req, res, next) => {
 
   // Validate page
   if (page < 1) {
-    return next(new ApiError(400, 'Page must be greater than 0'));
+    return next(ApiError.badRequest('Page must be greater than 0'));
   }
 
   // Validate limit
   if (limit < 1 || limit > 100) {
-    return next(new ApiError(400, 'Limit must be between 1 and 100'));
+    return next(ApiError.badRequest('Limit must be between 1 and 100'));
   }
 
   // Validate sort order
   if (!['asc', 'desc'].includes(sortOrder)) {
-    return next(new ApiError(400, 'Sort order must be either asc or desc'));
+    return next(ApiError.badRequest('Sort order must be either asc or desc'));
   }
 
   req.pagination = {
@@ -67,31 +77,37 @@ const validatePagination = (req, res, next) => {
   next();
 };
 
-// Validate MongoDB ObjectId
+/**
+ * Validate MongoDB ObjectId
+ */
 const validateObjectId = (paramName = 'id') => {
   return (req, res, next) => {
     const id = req.params[paramName];
     
     if (!id) {
-      return next(new ApiError(400, `${paramName} is required`));
+      return next(ApiError.badRequest(`${paramName} is required`));
     }
 
     // Check if id is a valid MongoDB ObjectId
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-      return next(new ApiError(400, `Invalid ${paramName} format`));
+      return next(ApiError.badRequest(`Invalid ${paramName} format`));
     }
 
     next();
   };
 };
 
-// Validate email format
+/**
+ * Validate email format
+ */
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
-// Validate password strength
+/**
+ * Validate password strength
+ */
 const validatePassword = (password) => {
   const minLength = 8;
   const hasUpperCase = /[A-Z]/.test(password);
@@ -118,7 +134,9 @@ const validatePassword = (password) => {
   return null; // Password is valid
 };
 
-// Sanitize input data
+/**
+ * Sanitize input data
+ */
 const sanitizeInput = (req, res, next) => {
   const sanitizeString = (str) => {
     if (typeof str !== 'string') return str;
@@ -157,5 +175,5 @@ module.exports = {
   validateObjectId,
   validateEmail,
   validatePassword,
-  sanitizeInput,
+  sanitizeInput
 };

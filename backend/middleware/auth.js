@@ -1,100 +1,115 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { ApiError } = require('../utils/ApiError');
+const { COOKIE_OPTIONS } = require('../utils/constants');
+const asyncHandler = require('../utils/asyncHandler');
 
-// Verify JWT token
-const authenticate = async (req, res, next) => {
+/**
+ * Verify JWT token and attach user to request
+ */
+const verifyJWT = asyncHandler(async (req, res, next) => {
+  let token;
+
+  // Extract token from Authorization header (Bearer token) OR from httpOnly cookie named 'accessToken'
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies && req.cookies.accessToken) {
+    token = req.cookies.accessToken;
+  }
+
+  // If no token found: throw ApiError.unauthorized('Access token is required')
+  if (!token) {
+    throw ApiError.unauthorized('Access token is required');
+  }
+
+  // Verify token using jwt.verify(token, process.env.JWT_ACCESS_SECRET)
+  let decoded;
   try {
-    let token;
-
-    if (req.cookies && req.cookies.token) {
-      token = req.cookies.token;
-    }
-    else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
-
-    if (!token) {
-      return next(new ApiError(401, 'Access denied. No token provided.'));
-    }
-
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Get user from database
-    const user = await User.findById(decoded.id).select('+password');
-    if (!user) {
-      return next(new ApiError(401, 'Invalid token. User not found.'));
-    }
-
-    if (!user.isActive) {
-      return next(new ApiError(401, 'Account is deactivated.'));
-    }
-
-    // Attach user to request object
-    req.user = user;
-    next();
+    decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
   } catch (error) {
+    // If verification fails (JsonWebTokenError): throw ApiError.unauthorized('Invalid token')
     if (error.name === 'JsonWebTokenError') {
-      return next(new ApiError(401, 'Invalid token.'));
+      throw ApiError.unauthorized('Invalid token');
     }
+    // If token expired (TokenExpiredError): throw ApiError.unauthorized('Token has expired')
     if (error.name === 'TokenExpiredError') {
-      return next(new ApiError(401, 'Token expired.'));
+      throw ApiError.unauthorized('Token has expired');
     }
-    return next(new ApiError(500, 'Authentication error.'));
+    throw error;
   }
-};
 
-// Optional authentication (doesn't fail if no token)
-const optionalAuth = async (req, res, next) => {
+  // Fetch user from MongoDB using Mongoose
+  const user = await User.findById(decoded.id).select('-passwordHash -refreshToken -passwordResetToken');
+
+  // If user not found: throw ApiError.unauthorized('User no longer exists')
+  if (!user) {
+    throw ApiError.unauthorized('User no longer exists');
+  }
+
+  // If user.isActive === false: throw ApiError.forbidden('Your account has been suspended')
+  if (user.isActive === false) {
+    throw ApiError.forbidden('Your account has been suspended');
+  }
+
+  // Attach full user document to req.user
+  req.user = user;
+
+  next();
+});
+
+/**
+ * Optional authentication - doesn't throw if no token present
+ */
+const optionalAuth = asyncHandler(async (req, res, next) => {
+  let token;
+
+  // Extract token from Authorization header (Bearer token) OR from httpOnly cookie named 'accessToken'
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies && req.cookies.accessToken) {
+    token = req.cookies.accessToken;
+  }
+
+  // BUT if no token is present, just call next() without throwing
+  if (!token) {
+    return next();
+  }
+
+  // If token exists but is invalid/expired, still call next() without throwing (don't block the request)
+  let decoded;
   try {
-    let token;
-
-    if (req.cookies && req.cookies.token) {
-      token = req.cookies.token;
-    } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
-
-    if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id);
-      if (user && user.isActive) {
-        req.user = user;
-      }
-    }
-
-    next();
+    decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
   } catch (error) {
-    // Silently fail for optional auth
-    next();
+    // Silently continue for optional auth
+    return next();
   }
+
+  // Only attach req.user if token is valid and user is found and isActive
+  try {
+    const user = await User.findById(decoded.id).select('-passwordHash -refreshToken -passwordResetToken');
+    
+    if (user && user.isActive === true) {
+      req.user = user;
+    }
+  } catch (error) {
+    // Silently continue for optional auth
+  }
+
+  next();
+});
+
+/**
+ * Set access token cookie
+ */
+const setAccessTokenCookie = (res, token) => {
+  res.cookie('accessToken', token, COOKIE_OPTIONS);
 };
 
-// Generate JWT token
-const generateToken = (userId) => {
-  return jwt.sign(
-    { id: userId },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE || '7d' }
-  );
-};
-
-// Set token in cookie
-const setTokenCookie = (res, token) => {
-  const cookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  };
-
-  res.cookie('token', token, cookieOptions);
-};
-
-// Clear token cookie
-const clearTokenCookie = (res) => {
-  res.cookie('token', '', {
+/**
+ * Clear access token cookie
+ */
+const clearAccessTokenCookie = (res) => {
+  res.cookie('accessToken', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
@@ -103,9 +118,8 @@ const clearTokenCookie = (res) => {
 };
 
 module.exports = {
-  authenticate,
+  verifyJWT,
   optionalAuth,
-  generateToken,
-  setTokenCookie,
-  clearTokenCookie,
+  setAccessTokenCookie,
+  clearAccessTokenCookie
 };
