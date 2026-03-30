@@ -7,124 +7,128 @@ const morgan = require('morgan');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
-const { createServer } = require('http');
-const { Server } = require('socket.io');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const http = require('http');
+const socketService = require('./services/socket.service');
+require('./services/cronJobs'); // Start cron jobs
 
 // Import routes
-const authRoutes = require('./routes/auth');
-const jobRoutes = require('./routes/jobs');
-const applicationRoutes = require('./routes/applications');
-const userRoutes = require('./routes/users');
-const notificationRoutes = require('./routes/notifications');
-const analyticsRoutes = require('./routes/analytics');
+const authRoutes = require('./routes/auth.routes');
+const jobRoutes = require('./routes/job.routes');
+const applicationRoutes = require('./routes/application.routes');
+const userRoutes = require('./routes/user.routes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
-
-// Import config
 const connectDB = require('./config/db');
-const { socketService } = require('./services/socketService');
 
 // Load env vars
 dotenv.config();
 
 // Create Express app
 const app = express();
-const server = createServer(app);
+const server = http.createServer(app);
 
-// Socket.IO setup
-const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST"],
-    credentials: true
-  }
-});
+// Initialize Socket.io
+socketService.initSocket(server);
 
-// Initialize socket service
-socketService(io);
-
-// Connect to database
-connectDB();
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
-
-// Middleware
-app.use(helmet());
-app.use(compression());
-app.use(morgan('combined'));
-app.use(limiter);
+// Middleware in correct order
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:3000",
   credentials: true
 }));
+app.use(helmet());
+app.use(morgan('dev'));
+app.use(compression());
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieParser());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: 'Too many requests from this IP'
+});
+app.use('/api', limiter);
 
 // Swagger configuration
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Job Portal API',
-      version: '1.0.0',
-      description: 'API documentation for Job Application Portal',
+      title: 'Job Application Portal API',
+      version: require('./package.json').version,
+      description: 'API documentation for Job Application Portal. Use Bearer token for authentication.',
     },
-    servers: [
-      {
-        url: process.env.API_URL || 'http://localhost:5000',
-        description: 'Development server',
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
       },
-    ],
+    },
+    servers: [{ url: process.env.API_URL || 'http://localhost:5000' }],
   },
-  apis: ['./routes/*.js'],
+  apis: ['./routes/*.js', './controllers/*.js'],
 };
 
 const specs = swaggerJsdoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'Server is running' });
-});
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/analytics', analyticsRoutes);
-
-// Error handling middleware
-app.use(errorHandler);
 
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
+// Global Error handling middleware (LAST)
+app.use(errorHandler);
+
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`API documentation available at http://localhost:${PORT}/api-docs`);
+// Connect to database then start server
+connectDB().then(() => {
+  server.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📖 API documentation available at http://localhost:${PORT}/api/docs`);
+  });
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-  console.log(`Error: ${err.message}`);
+// Handle uncaughtException and unhandledRejection
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION! 💥 Shutting down...');
+  console.error(err.name, err.message);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED REJECTION! 💥 Shutting down...');
+  console.error(err.name, err.message);
   server.close(() => {
     process.exit(1);
   });
 });
+
+// Graceful shutdown
+const gracefulShutdown = () => {
+  console.log('SIGTERM/SIGINT received. Shutting down gracefully...');
+  server.close(async () => {
+    console.log('Process terminated. Closing database connection...');
+    await mongoose.connection.close();
+    process.exit(0);
+  });
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 module.exports = app;

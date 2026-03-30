@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const { ApiError } = require('../utils/ApiError');
+const ApiError = require('../utils/ApiError');
 
 /**
  * Check express-validator result, throw ApiError.badRequest() with all field errors if any

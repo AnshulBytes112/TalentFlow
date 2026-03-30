@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const mongooseErrorPlugin = require('../utils/mongooseErrorPlugin');
+// const mongooseErrorPlugin = require('../utils/mongooseErrorPlugin');
 
 const userSchema = new mongoose.Schema({
   firstName: {
@@ -26,8 +26,14 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: function () {
+      return this.isNew;
+    },
     minlength: [6, 'Password must be at least 6 characters long'],
+    select: false
+  },
+  passwordHash: {
+    type: String,
     select: false
   },
   role: {
@@ -51,13 +57,21 @@ const userSchema = new mongoose.Schema({
       type: String,
       maxlength: [500, 'Bio cannot exceed 500 characters']
     },
-    resume: {
-      url: String,
-      publicId: String
+    resumeUrl: String,
+    resumePublicId: String,
+    avatarUrl: String,
+    avatarPublicId: String,
+    companyName: {
+      type: String,
+      trim: true
     },
-    profilePicture: {
-      url: String,
-      publicId: String
+    website: {
+      type: String,
+      trim: true
+    },
+    companyDescription: {
+      type: String,
+      maxlength: [2000, 'Company description cannot exceed 2000 characters']
     },
     skills: [{
       type: String,
@@ -120,49 +134,57 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   try {
     const salt = await bcrypt.genSalt(12);
-    this.password = await bcrypt.hash(this.password, salt);
+    this.passwordHash = await bcrypt.hash(this.password, salt);
+    
+    // Discard plaintext password so it's not saved to the database
+    this.password = undefined;
+    
     next();
   } catch (error) {
     next(error);
   }
 });
 
-// Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!this.passwordHash) {
+    throw new Error('Password hash not found');
+  }
+
+  try {
+    const result = await bcrypt.compare(candidatePassword, this.passwordHash);
+    return result;
+  } catch (error) {
+    throw error;
+  }
 };
 
-// Generate password reset token
-userSchema.methods.generatePasswordResetToken = function() {
+userSchema.methods.generatePasswordResetToken = function () {
   const resetToken = crypto.randomBytes(32).toString('hex');
-  
+
   this.passwordResetToken = crypto
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
-  
+
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
-  
+
   return resetToken;
 };
 
-// Get full name method
-userSchema.virtual('fullName').get(function() {
+userSchema.virtual('fullName').get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
-// Index for search
 userSchema.index({ firstName: 'text', lastName: 'text', email: 'text' });
 userSchema.index({ 'profile.skills': 1 });
 userSchema.index({ 'profile.location': 1 });
 userSchema.index({ role: 1 });
 
-// Apply mongoose error plugin
-userSchema.plugin(mongooseErrorPlugin);
+// userSchema.plugin(mongooseErrorPlugin);
 
 module.exports = mongoose.model('User', userSchema);

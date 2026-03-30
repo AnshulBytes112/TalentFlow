@@ -1,0 +1,95 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Next.js
+.next/
+out/
+
+# Production
+build/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.staging
+.env.qa
+.env.production
+.env.test
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Database
+*.sqlite
+*.db
+*.sqlite3
+data/
+db/
+dump.rdb
+
+# API Keys and secrets
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+credentials/
+private/
+config/secrets.json
+config/keys.json
+*credentials.json
+*keys.json
+*-key.json
+
+# Local configuration files
+config/local.json
+config/development.json
+config/production.json
+config/local.js
+config/local.ts
+
+# Misc
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+*.tgz
+.yarn-integrity
+tmp/
+temp/
+uploads/
+temp_uploads/
+static/uploads/

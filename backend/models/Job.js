@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const mongooseErrorPlugin = require('../utils/mongooseErrorPlugin');
+// const mongooseErrorPlugin = require('../utils/mongooseErrorPlugin');
 
 const jobSchema = new mongoose.Schema({
   title: {
@@ -16,7 +16,6 @@ const jobSchema = new mongoose.Schema({
   company: {
     name: {
       type: String,
-      required: [true, 'Company name is required'],
       trim: true
     },
     logo: {
@@ -38,12 +37,10 @@ const jobSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['full-time', 'part-time', 'contract', 'internship', 'remote'],
-    required: [true, 'Job type is required']
+    enum: ['full-time', 'part-time', 'contract', 'internship', 'remote']
   },
   category: {
     type: String,
-    required: [true, 'Category is required'],
     enum: [
       'engineering',
       'design',
@@ -60,8 +57,7 @@ const jobSchema = new mongoose.Schema({
   },
   experience: {
     type: String,
-    enum: ['entry-level', 'mid-level', 'senior-level', 'executive'],
-    required: [true, 'Experience level is required']
+    enum: ['entry-level', 'mid-level', 'senior-level', 'executive']
   },
   salary: {
     min: {
@@ -84,8 +80,7 @@ const jobSchema = new mongoose.Schema({
   },
   skills: [{
     type: String,
-    trim: true,
-    required: true
+    trim: true
   }],
   responsibilities: [{
     type: String,
@@ -109,7 +104,7 @@ const jobSchema = new mongoose.Schema({
   postedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: [true, 'Posted by is required']
   },
   status: {
     type: String,
@@ -153,18 +148,18 @@ jobSchema.index({ featured: 1 });
 jobSchema.index({ expiryDate: 1 });
 
 // Virtual for checking if job is expired
-jobSchema.virtual('isExpired').get(function() {
+jobSchema.virtual('isExpired').get(function () {
   return this.expiryDate < new Date();
 });
 
 // Method to increment view count
-jobSchema.methods.incrementViewCount = function() {
+jobSchema.methods.incrementViewCount = function () {
   this.viewCount += 1;
   return this.save();
 };
 
 // Pre-find hook to filter out expired jobs
-jobSchema.pre(/^find/, function(next) {
+jobSchema.pre(/^find/, function (next) {
   // Only filter for active jobs queries
   if (this.getQuery().status === 'active') {
     this.find({ expiryDate: { $gt: new Date() } });
@@ -173,7 +168,7 @@ jobSchema.pre(/^find/, function(next) {
 });
 
 // Static method to find active jobs with filters
-jobSchema.statics.findActiveJobs = function(filters = {}) {
+jobSchema.statics.findActiveJobs = function (filters = {}) {
   const query = {
     status: 'active',
     expiryDate: { $gt: new Date() },
@@ -225,6 +220,6 @@ jobSchema.statics.findActiveJobs = function(filters = {}) {
 };
 
 // Apply mongoose error plugin
-jobSchema.plugin(mongooseErrorPlugin);
+// jobSchema.plugin(mongooseErrorPlugin);
 
 module.exports = mongoose.model('Job', jobSchema);

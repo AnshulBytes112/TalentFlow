@@ -198,12 +198,12 @@ applicationSchema.index({ 'interviewSchedule.date': 1 });
 applicationSchema.index({ createdAt: -1 });
 
 // Virtual for checking if application is active
-applicationSchema.virtual('isActive').get(function() {
+applicationSchema.virtual('isActive').get(function () {
   return !this.isArchived && this.status !== 'withdrawn' && this.status !== 'rejected';
 });
 
 // Method to add timeline entry
-applicationSchema.methods.addTimelineEntry = function(status, note, updatedBy) {
+applicationSchema.methods.addTimelineEntry = function (status, note, updatedBy) {
   this.timeline.push({
     status,
     note,
@@ -214,7 +214,7 @@ applicationSchema.methods.addTimelineEntry = function(status, note, updatedBy) {
 };
 
 // Method to update status with validation
-applicationSchema.methods.updateStatus = function(newStatus, note, updatedBy) {
+applicationSchema.methods.updateStatus = function (newStatus, note, updatedBy) {
   // Validate status transition
   const validTransitions = VALID_TRANSITIONS[this.status] || [];
   if (!validTransitions.includes(newStatus)) {
@@ -229,12 +229,12 @@ applicationSchema.methods.updateStatus = function(newStatus, note, updatedBy) {
     updatedBy: updatedBy,
     date: new Date()
   });
-  
+
   return this.save();
 };
 
 // Pre-save middleware to update timeline
-applicationSchema.pre('save', function(next) {
+applicationSchema.pre('save', function (next) {
   if (this.isModified('status') && !this.isNew) {
     this.timeline.push({
       status: this.status,

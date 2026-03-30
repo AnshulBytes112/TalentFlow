@@ -44,6 +44,24 @@ const JOB_TYPES = ['full-time', 'part-time', 'contract', 'internship'];
 // Work modes
 const WORK_MODES = ['remote', 'onsite', 'hybrid'];
 
+// Job categories
+const JOB_CATEGORIES = [
+  'engineering',
+  'design',
+  'marketing',
+  'sales',
+  'customer-support',
+  'product',
+  'data-science',
+  'hr',
+  'finance',
+  'operations',
+  'other'
+];
+
+// Experience levels
+const EXPERIENCE_LEVELS = ['entry-level', 'mid-level', 'senior-level', 'executive'];
+
 // Notification types
 const NOTIFICATION_TYPES = {
   APPLICATION_UPDATE: 'application_update',
@@ -67,6 +85,8 @@ module.exports = {
   JOB_STATUS,
   JOB_TYPES,
   WORK_MODES,
+  JOB_CATEGORIES,
+  EXPERIENCE_LEVELS,
   NOTIFICATION_TYPES,
   MAX_FILE_SIZE,
   ALLOWED_FILE_TYPES,

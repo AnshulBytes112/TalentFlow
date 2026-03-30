@@ -1,15 +1,29 @@
-const { ApiError } = require('../utils/ApiError');
+const ApiError = require('../utils/ApiError');
 
 /**
  * Global Express error handler for MongoDB + Mongoose stack
  */
 const errorHandler = (err, req, res, next) => {
-  // 1. ApiError instances (err instanceof ApiError)
-  if (err instanceof ApiError) {
+  // Handle null/undefined errors
+  if (!err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+
+  let error = { ...err };
+  error.message = err.message;
+
+  // Log error for debugging
+  console.error(err);
+
+  // 1. ApiError instances
+  if (err && err.statusCode && err.isOperational) {
     return res.status(err.statusCode).json({
       success: false,
       message: err.message,
-      errors: err.errors
+      errors: err.errors || []
     });
   }
 
