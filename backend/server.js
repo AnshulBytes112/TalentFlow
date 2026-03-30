@@ -10,14 +10,16 @@ const rateLimit = require('express-rate-limit');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const http = require('http');
-const socketService = require('./services/socket.service');
-require('./services/cronJobs'); // Start cron jobs
+const socketService = require('./services/socketService');
+
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
 const jobRoutes = require('./routes/job.routes');
 const applicationRoutes = require('./routes/application.routes');
 const userRoutes = require('./routes/user.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const analyticsRoutes = require('./routes/analytics.routes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -84,6 +86,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -97,6 +101,7 @@ const PORT = process.env.PORT || 5000;
 
 // Connect to database then start server
 connectDB().then(() => {
+  require('./services/cronJobs'); // Start cron jobs after DB is connected
   server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📖 API documentation available at http://localhost:${PORT}/api/docs`);

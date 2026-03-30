@@ -6,7 +6,8 @@ const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const { JOB_STATUS, JOB_TYPES, WORK_MODES, JOB_CATEGORIES, EXPERIENCE_LEVELS } = require('../utils/constants');
 const emailService = require('../services/emailService');
-const { getIO } = require('../services/socket.service');
+const { emitToUser } = require('../services/socketService');
+const { createNotification } = require('../services/notificationService');
 
 /**
  * @swagger
@@ -630,13 +631,12 @@ const closeJob = asyncHandler(async (req, res) => {
     stage: { $nin: ['rejected', 'withdrawn', 'offer'] }
   }).populate('applicant', 'email firstName lastName');
 
-  // Trigger background notifications
+  // Trigger background notifications (Parallelized & Non-blocking)
   setImmediate(async () => {
-    const io = getIO();
-    for (const app of activeApplications) {
+    const notifications = activeApplications.map(async (app) => {
       try {
         // 1. Create In-app notification
-        await Notification.create({
+        await createNotification({
           recipient: app.applicant._id,
           sender: req.user._id,
           type: 'system',
@@ -646,17 +646,20 @@ const closeJob = asyncHandler(async (req, res) => {
         });
 
         // 2. Emit socket event
-        io.to(app.applicant._id.toString()).emit('notification', {
+        emitToUser(app.applicant._id, 'notification', {
           type: 'JOB_CLOSED',
-          message: `The job "${job.title}" has been closed.`
+          message: `The job "${job.title}" has been closed.`,
+          jobId: job._id
         });
 
         // 3. Send Email
-        await emailService.sendJobClosedEmail(app.applicant, job);
+        return emailService.sendJobClosedEmail(app.applicant, job);
       } catch (err) {
         console.error(`Failed to notify applicant ${app.applicant._id}:`, err);
       }
-    }
+    });
+
+    await Promise.allSettled(notifications);
   });
 
   res.json(

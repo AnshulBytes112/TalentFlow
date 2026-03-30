@@ -11,267 +11,263 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-/**
- * Send email verification email
- */
-const sendVerificationEmail = async (user, verificationToken) => {
-  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+const APP_NAME = 'JobMatrix';
+const FROM_EMAIL = `${APP_NAME} <${process.env.SMTP_USER}>`;
 
+/**
+ * Send Welcome Email
+ */
+const sendWelcomeEmail = async (user) => {
   const mailOptions = {
+    from: FROM_EMAIL,
     to: user.email,
-    subject: 'Verify Your Email Address',
+    subject: `Welcome to ${APP_NAME}!`,
     html: `
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
-        <h2 style="color: #333;">Welcome to JobMatrix!</h2>
-        <p>Hi ${user.firstName},</p>
-        <p>Thank you for registering with JobMatrix. Please click the button below to verify your email address:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${verificationUrl}" 
-             style="background-color: #007bff; color: white; padding: 12px 30px; 
-                    text-decoration: none; border-radius: 5px; display: inline-block;">
-            Verify Email Address
-          </a>
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #4a90e2; text-align: center;">Welcome to JobMatrix, ${user.firstName}!</h2>
+        <p>We're excited to have you join our community. Whether you're looking for your next career move or searching for top talent, we're here to help you succeed.</p>
+        <p>Get started by completing your profile to stand out to potential ${user.role === 'jobseeker' ? 'employers' : 'candidates'}.</p>
+        <div style="text-align: center; margin-top: 30px;">
+          <a href="${process.env.FRONTEND_URL}/profile" style="background-color: #4a90e2; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Complete Your Profile</a>
         </div>
-        <p>Or copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; color: #666;">${verificationUrl}</p>
-        <p>This link will expire in 24 hours.</p>
-        <p>If you didn't create an account, please ignore this email.</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="color: #666; font-size: 12px;">
-          Best regards,<br>
-          The JobMatrix Team
-        </p>
+        <p style="margin-top: 30px; font-size: 0.9em; color: #666;">If you have any questions, just reply to this email.</p>
+        <footer style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px; text-align: center; color: #999; font-size: 0.8em;">
+          &copy; ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.
+        </footer>
       </div>
     `
   };
 
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Verification email sent to ${user.email}`);
-  } catch (error) {
-    console.error('Error sending verification email:', error);
-    throw error;
-  }
+  return await transporter.sendMail(mailOptions);
 };
 
 /**
- * Send password reset email
+ * Send Email Verification Token
  */
-const sendPasswordResetEmail = async (user, resetToken) => {
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-
+const sendEmailVerification = async (user, token) => {
+  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+  
   const mailOptions = {
+    from: FROM_EMAIL,
     to: user.email,
-    subject: 'Reset Your Password',
+    subject: `Verify your email for ${APP_NAME}`,
     html: `
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
-        <h2 style="color: #333;">Reset Your Password</h2>
-        <p>Hi ${user.firstName},</p>
-        <p>We received a request to reset your password for your JobMatrix account. Click the button below to create a new password:</p>
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;">
+        <h2>Verify Your Email</h2>
+        <p>Hi ${user.firstName}, please click the button below to verify your email address and activate your account.</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" 
-             style="background-color: #dc3545; color: white; padding: 12px 30px; 
-                    text-decoration: none; border-radius: 5px; display: inline-block;">
-            Reset Password
-          </a>
+          <a href="${verificationUrl}" style="background-color: #28a745; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px;">Verify Email</a>
         </div>
-        <p>Or copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; color: #666;">${resetUrl}</p>
-        <p>This link will expire in 1 hour.</p>
-        <p>If you didn't request a password reset, please ignore this email. Your password will remain unchanged.</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="color: #666; font-size: 12px;">
-          Best regards,<br>
-          The JobMatrix Team
-        </p>
+        <p>Or copy this link: <br> <a href="${verificationUrl}">${verificationUrl}</a></p>
       </div>
     `
   };
 
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Password reset email sent to ${user.email}`);
-  } catch (error) {
-    console.error('Error sending password reset email:', error);
-    throw error;
-  }
+  return await transporter.sendMail(mailOptions);
 };
 
 /**
- * Send congratulation email for job offer
+ * Send Password Reset Token
+ */
+const sendPasswordReset = async (user, token) => {
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  
+  const mailOptions = {
+    from: FROM_EMAIL,
+    to: user.email,
+    subject: `Password Reset Request - ${APP_NAME}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;">
+        <h2>Reset Your Password</h2>
+        <p>You requested a password reset. Click the button below to choose a new password. This link expires in 1 hour.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background-color: #dc3545; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px;">Reset Password</a>
+        </div>
+        <p>If you didn't request this, please ignore this email.</p>
+      </div>
+    `
+  };
+
+  return await transporter.sendMail(mailOptions);
+};
+
+/**
+ * Send Application Received Notification to Applicant
+ */
+const sendApplicationReceived = async (applicant, job) => {
+  const mailOptions = {
+    from: FROM_EMAIL,
+    to: applicant.email,
+    subject: `Application Received: ${job.title}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;">
+        <h2 style="color: #28a745;">Application Submitted!</h2>
+        <p>Hi ${applicant.firstName}, your application for <strong>${job.title}</strong> at <strong>${job.company?.name || job.postedBy?.profile?.companyName || 'the company'}</strong> has been successfully received.</p>
+        <p>The recruiter will review your profile and reach out if there's a match.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.FRONTEND_URL}/dashboard/applications" style="background-color: #007bff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px;">Track Application</a>
+        </div>
+      </div>
+    `
+  };
+
+  return await transporter.sendMail(mailOptions);
+};
+
+/**
+ * Send Stage Update Notification
+ */
+const sendStageUpdate = async (applicant, job, newStage, note) => {
+  const stageConfigs = {
+    screening: {
+      title: 'Application Under Review',
+      sub: 'Good news! Your application is moving forward.',
+      msg: `Your application for <strong>${job.title}</strong> is now in the <strong>Screening</strong> phase. Our team is carefully reviewing your profile and will be in touch soon.`,
+      color: '#3182ce'
+    },
+    interview: {
+      title: 'Interview Invitation!',
+      sub: 'Congratulations! We\'d like to get to know you better.',
+      msg: `We are excited to move your application for <strong>${job.title}</strong> to the <strong>Interview</strong> stage. Please check your dashboard for scheduling details or wait for our team to contact you.`,
+      color: '#805ad5'
+    },
+    technical: {
+      title: 'Technical Assessment',
+      sub: 'Next step: Prove your skills.',
+      msg: `Your application for <strong>${job.title}</strong> has advanced to the <strong>Technical</strong> stage. This is a great opportunity to showcase your expertise.`,
+      color: '#38a169'
+    }
+  };
+
+  const config = stageConfigs[newStage] || {
+    title: 'Application Update',
+    sub: 'Your application status has changed.',
+    msg: `Your application for <strong>${job.title}</strong> has moved to the <strong>${newStage}</strong> stage.`,
+    color: '#4a5568'
+  };
+
+  const mailOptions = {
+    from: FROM_EMAIL,
+    to: applicant.email,
+    subject: `Job Update: ${config.title} - ${job.title}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border-top: 4px solid ${config.color};">
+        <h2 style="color: ${config.color};">${config.title}</h2>
+        <p>Hi ${applicant.firstName}, ${config.sub}</p>
+        <p>${config.msg}</p>
+        ${note ? `<div style="background-color: #f7fafc; padding: 15px; border-left: 4px solid #cbd5e0; margin: 20px 0;"><strong>Message from recruiter:</strong><br>${note}</div>` : ''}
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.FRONTEND_URL}/dashboard/applications" style="background-color: ${config.color}; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Application Status</a>
+        </div>
+      </div>
+    `
+  };
+
+  return await transporter.sendMail(mailOptions);
+};
+
+/**
+ * Send Offer Email
  */
 const sendOfferEmail = async (applicant, job) => {
   const mailOptions = {
+    from: FROM_EMAIL,
     to: applicant.email,
-    subject: `Congratulations! Job Offer from ${job.company || job.postedBy.firstName}`,
+    subject: `Job Offer: ${job.title}`,
     html: `
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
-        <h2 style="color: #28a745;">🎉 Congratulations!</h2>
-        <p>Hi ${applicant.firstName},</p>
-        <p>We're thrilled to inform you that you have received a job offer!</p>
-        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
-          <h3 style="color: #333; margin-top: 0;">Job Details:</h3>
-          <p><strong>Position:</strong> ${job.title}</p>
-          <p><strong>Company:</strong> ${job.company || job.postedBy.firstName}</p>
-          <p><strong>Location:</strong> ${job.location}</p>
-          <p><strong>Work Mode:</strong> ${job.workMode}</p>
-          ${job.salaryMin ? `<p><strong>Salary Range:</strong> $${job.salaryMin}${job.salaryMax ? ` - $${job.salaryMax}` : ''}</p>` : ''}
-        </div>
-        <p>Please check your application dashboard for more details and next steps.</p>
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; background-color: #f0fff4; border: 1px solid #c6f6d5;">
+        <h1 style="color: #2f855a; text-align: center;">🎉 Congratulations!</h1>
+        <p>Hi ${applicant.firstName}, we are thrilled to extend an offer for the <strong>${job.title}</strong> position.</p>
+        <p>Please log in to your dashboard to view the full offer details, including compensation and benefits.</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.FRONTEND_URL}/applications" 
-             style="background-color: #28a745; color: white; padding: 12px 30px; 
-                    text-decoration: none; border-radius: 5px; display: inline-block;">
-            View Application
-          </a>
+          <a href="${process.env.FRONTEND_URL}/dashboard/applications" style="background-color: #2f855a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 1.1em;">View Job Offer</a>
         </div>
-        <p>Congratulations again on this achievement!</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="color: #666; font-size: 12px;">
-          Best regards,<br>
-          The JobMatrix Team
-        </p>
       </div>
     `
   };
 
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Offer email sent to ${applicant.email}`);
-  } catch (error) {
-    console.error('Error sending offer email:', error);
-    throw error;
-  }
+  return await transporter.sendMail(mailOptions);
 };
 
 /**
- * Send rejection email
+ * Send Rejection Email
  */
-const sendRejectionEmail = async (applicant, job, note = '') => {
+const sendRejectionEmail = async (applicant, job, note) => {
   const mailOptions = {
+    from: FROM_EMAIL,
     to: applicant.email,
-    subject: `Update on Your Application for ${job.title}`,
+    subject: `Update regarding your application for ${job.title}`,
     html: `
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
-        <h2 style="color: #dc3545;">Application Update</h2>
-        <p>Hi ${applicant.firstName},</p>
-        <p>Thank you for your interest in the <strong>${job.title}</strong> position at ${job.company || job.postedBy?.firstName}.</p>
-        <p>After careful consideration, we have decided to move forward with other candidates at this time.</p>
-        ${note ? `
-        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <p><strong>Feedback:</strong></p>
-          <p>${note}</p>
-        </div>
-        ` : ''}
-        <p>We encourage you to continue browsing and applying for other opportunities on JobMatrix.</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.FRONTEND_URL}/jobs" 
-             style="background-color: #007bff; color: white; padding: 12px 30px; 
-                    text-decoration: none; border-radius: 5px; display: inline-block;">
-            Browse More Jobs
-          </a>
-        </div>
-        <p>We wish you the best in your job search!</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="color: #666; font-size: 12px;">
-          Best regards,<br>
-          The JobMatrix Team
-        </p>
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;">
+        <h2>Application Update</h2>
+        <p>Hi ${applicant.firstName}, thank you for the time you spent applying for the <strong>${job.title}</strong> role.</p>
+        <p>After careful consideration, we have decided not to move forward with your application at this time.</p>
+        ${note ? `<p><strong>Feedback:</strong> ${note}</p>` : ''}
+        <p>We wish you the best in your job search and encourage you to apply for future roles that match your skills.</p>
       </div>
     `
   };
 
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Rejection email sent to ${applicant.email}`);
-  } catch (error) {
-    console.error('Error sending rejection email:', error);
-  }
+  return await transporter.sendMail(mailOptions);
 };
 
 /**
- * Send job closed email to applicants
+ * Send Job Expiry Reminder to Recruiter
  */
-const sendJobClosedEmail = async (applicant, job) => {
+const sendJobExpiryReminder = async (recruiter, jobs) => {
+  const jobList = jobs.map(job => `<li>${job.title}</li>`).join('');
+  
   const mailOptions = {
-    to: applicant.email,
-    subject: `Job Closed: ${job.title}`,
+    from: FROM_EMAIL,
+    to: recruiter.email,
+    subject: `Notice: Job Postings Expired`,
     html: `
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
-        <h2 style="color: #6c757d;">Job Closed</h2>
-        <p>Hi ${applicant.firstName},</p>
-        <p>We're writing to inform you that the job position <strong>${job.title}</strong> at <strong>${job.company || job.postedBy?.firstName}</strong> has been closed and is no longer accepting applications.</p>
-        <p>While this specific position is no longer available, we encourage you to keep your profile updated and continue your search for other exciting opportunities on JobMatrix.</p>
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;">
+        <h2>Your Job Postings Have Expired</h2>
+        <p>Hi ${recruiter.firstName}, the following job postings have reached their deadline and are now closed:</p>
+        <ul>${jobList}</ul>
+        <p>You can renew these postings or view applicants from your recruiter dashboard.</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.FRONTEND_URL}/jobs" 
-             style="background-color: #007bff; color: white; padding: 12px 30px; 
-                    text-decoration: none; border-radius: 5px; display: inline-block;">
-            Browse New Jobs
-          </a>
+          <a href="${process.env.FRONTEND_URL}/recruiter/jobs" style="background-color: #6c757d; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px;">Manage Jobs</a>
         </div>
-        <p>Thank you for your interest and best of luck with your future applications!</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="color: #666; font-size: 12px;">
-          Best regards,<br>
-          The JobMatrix Team
-        </p>
       </div>
     `
   };
 
-  try {
-    await transporter.sendMail(mailOptions);
-  } catch (error) {
-    console.error('Error sending job closed email:', error);
-  }
+  return await transporter.sendMail(mailOptions);
 };
 
 /**
- * Send account status update email
+ * Send Pending Applications Reminder to Recruiter
  */
-const sendAccountStatusEmail = async (user, status) => {
-  const isActive = status === 'activated';
+const sendPendingApplicationsReminder = async (recruiter, count) => {
   const mailOptions = {
-    to: user.email,
-    subject: `Your JobMatrix Account has been ${status}`,
+    from: FROM_EMAIL,
+    to: recruiter.email,
+    subject: `Action Required: ${count} Pending Applications`,
     html: `
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
-        <h2 style="color: ${isActive ? '#28a745' : '#dc3545'};">Account Status Update</h2>
-        <p>Hi ${user.firstName},</p>
-        <p>Your JobMatrix account has been <strong>${status}</strong> by an administrator.</p>
-        ${isActive ? `
-        <p>You can now log in and access all features of the platform.</p>
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border-left: 5px solid #ecc94b;">
+        <h2>Don't lose out on great talent!</h2>
+        <p>Hi ${recruiter.firstName}, you have <strong>${count}</strong> applications that have been in the "Applied" stage for more than 7 days.</p>
+        <p>Reviewing applications promptly improves your hiring brand and candidate experience.</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.FRONTEND_URL}/login" 
-             style="background-color: #28a745; color: white; padding: 12px 30px; 
-                    text-decoration: none; border-radius: 5px; display: inline-block;">
-            Log In Now
-          </a>
+          <a href="${process.env.FRONTEND_URL}/recruiter/dashboard" style="background-color: #d69e2e; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Review Applications</a>
         </div>
-        ` : `
-        <p>If you believe this is a mistake, please contact our support team for assistance.</p>
-        `}
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="color: #666; font-size: 12px;">
-          Best regards,<br>
-          The JobMatrix Team
-        </p>
       </div>
     `
   };
 
-  try {
-    await transporter.sendMail(mailOptions);
-  } catch (error) {
-    console.error('Error sending account status email:', error);
-  }
+  return await transporter.sendMail(mailOptions);
 };
 
 module.exports = {
-  sendVerificationEmail,
-  sendPasswordResetEmail,
+  sendWelcomeEmail,
+  sendEmailVerification,
+  sendPasswordReset,
+  sendApplicationReceived,
+  sendStageUpdate,
   sendOfferEmail,
   sendRejectionEmail,
-  sendJobClosedEmail,
-  sendAccountStatusEmail
+  sendJobExpiryReminder,
+  sendPendingApplicationsReminder
 };

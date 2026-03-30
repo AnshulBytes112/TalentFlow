@@ -8,7 +8,8 @@ const asyncHandler = require('../utils/asyncHandler');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
 const emailService = require('../services/emailService');
 const { ROLES } = require('../utils/constants');
-const { getIO } = require('../services/socket.service');
+const { createNotification } = require('../services/notificationService');
+const { emitToUser, disconnectUser } = require('../services/socketService');
 
 /**
  * @swagger
@@ -362,24 +363,30 @@ const toggleUserStatus = asyncHandler(async (req, res) => {
     // Trigger background notifications
     setImmediate(async () => {
         try {
+            const statusLabel = user.isActive ? 'activated' : 'deactivated';
+
             // 1. In-app notification
-            await Notification.create({
+            await createNotification({
                 recipient: user._id,
                 sender: req.user._id,
                 type: 'system',
                 title: 'Account Status Update',
-                message: `Your account has been ${status} by an administrator.`,
+                message: `Your account has been ${statusLabel} by an administrator.`,
             });
 
             // 2. Socket.io emission
-            const io = getIO();
-            io.to(user._id.toString()).emit('notification', {
+            emitToUser(user._id, 'notification', {
                 type: 'ACCOUNT_STATUS_UPDATE',
-                message: `Your account has been ${status}.`
+                message: `Your account has been ${statusLabel}.`
             });
 
-            // 3. Email notification
-            await emailService.sendAccountStatusEmail(user, status);
+            // 3. Force disconnect if deactivated
+            if (!user.isActive) {
+                disconnectUser(user._id);
+            }
+
+            // 4. Email notification
+            await emailService.sendAccountStatusEmail(user, statusLabel);
         } catch (err) {
             console.error(`Failed to notify user ${user._id} of status change:`, err);
         }

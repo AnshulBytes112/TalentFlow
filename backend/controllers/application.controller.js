@@ -7,7 +7,9 @@ const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const { VALID_STAGE_TRANSITIONS, NOTIFICATION_TYPES } = require('../utils/constants');
 
-const { sendOfferEmail, sendRejectionEmail } = require('../services/emailService');
+const { notifyStageChange, notifyNewApplication, notifyWithdrawal } = require('../services/notificationService');
+const { emitToUser } = require('../services/socketService');
+const emailService = require('../services/emailService');
 
 /**
  * @swagger
@@ -96,18 +98,16 @@ const applyToJob = asyncHandler(async (req, res) => {
   // Increment job.applicantsCount using $inc
   await Job.findByIdAndUpdate(jobId, { $inc: { applicantsCount: 1 } });
 
-  // Create notification for recruiter: "New application received"
-  await Notification.create({
-    recipient: job.postedBy,
-    sender: req.user._id,
-    type: NOTIFICATION_TYPES.NEW_APPLICATION,
-    title: 'New Application Received',
-    message: `${req.user.firstName} ${req.user.lastName} has applied to your job: ${job.title}`,
-    relatedJob: jobId,
-    relatedApplication: application._id
+  // Create notification for recruiter & emit socket event
+  await notifyNewApplication(job, req.user);
+  emitToUser(job.postedBy, 'application:new', {
+    jobId: job._id,
+    applicationId: application._id,
+    applicantName: `${req.user.firstName} ${req.user.lastName}`
   });
 
-  // TODO: Emit socket event to recruiter's room
+  // Send confirmation email to applicant
+  await emailService.sendApplicationReceived(req.user, job);
 
   res.status(201).json(
     ApiResponse.created(application, 'Application submitted successfully')
@@ -177,34 +177,22 @@ const updateApplicationStage = asyncHandler(async (req, res) => {
 
   await application.save();
 
-  // Create notification for applicant with new stage message
-  const stageMessages = {
-    screening: 'Your application is being reviewed',
-    interview: 'Congratulations! You have been selected for an interview',
-    offer: 'Congratulations! You have received a job offer',
-    rejected: 'Your application has been rejected'
-  };
-
-  await Notification.create({
-    recipient: application.applicant._id,
-    sender: req.user._id,
-    type: NOTIFICATION_TYPES.APPLICATION_UPDATE,
-    title: 'Application Status Update',
-    message: stageMessages[stage] || `Your application status has been updated to ${stage}`,
-    relatedJob: application.job._id,
-    relatedApplication: application._id
+  // Create notification for applicant & emit socket event
+  await notifyStageChange(application, stage);
+  emitToUser(application.applicant._id, 'application:stage_changed', {
+    applicationId: application._id,
+    jobId: application.job._id,
+    jobTitle: application.job.title,
+    newStage: stage
   });
 
-  // TODO: Emit socket event to applicant's room
-
-  // If stage is "offer" → send congratulations email to applicant
+  // Trigger emails based on stage
   if (stage === 'offer') {
-    await sendOfferEmail(application.applicant, application.job);
-  }
-
-  // If stage is "rejected" → send rejection email with optional note
-  if (stage === 'rejected') {
-    await sendRejectionEmail(application.applicant, application.job, note);
+    await emailService.sendOfferEmail(application.applicant, application.job);
+  } else if (stage === 'rejected') {
+    await emailService.sendRejectionEmail(application.applicant, application.job, note);
+  } else {
+    await emailService.sendStageUpdate(application.applicant, application.job, stage, note);
   }
 
   res.json(
@@ -259,6 +247,14 @@ const withdrawApplication = asyncHandler(async (req, res) => {
   });
 
   await application.save();
+
+  // Notify recruiter of withdrawal
+  await notifyWithdrawal(application.job, req.user);
+  emitToUser(application.job.postedBy, 'application:withdrawn', {
+    applicationId: application._id,
+    jobId: application.job._id,
+    applicantName: `${req.user.firstName} ${req.user.lastName}`
+  });
 
   // Decrement job.applicantsCount using $inc with -1
   await Job.findByIdAndUpdate(application.job._id, { $inc: { applicantsCount: -1 } });
