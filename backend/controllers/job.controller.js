@@ -446,7 +446,7 @@ const getJobs = asyncHandler(async (req, res) => {
 
   // Filter by job type
   if (jobType) {
-    query.jobType = jobType;
+    query.type = jobType;
   }
 
   // Filter by work mode
@@ -463,8 +463,8 @@ const getJobs = asyncHandler(async (req, res) => {
   // Filter by salary range
   if (salaryMin || salaryMax) {
     query.$and = [];
-    if (salaryMin) query.$and.push({ salaryMin: { $gte: parseInt(salaryMin) } });
-    if (salaryMax) query.$and.push({ salaryMax: { $lte: parseInt(salaryMax) } });
+    if (salaryMin) query.$and.push({ 'salary.min': { $gte: parseInt(salaryMin) } });
+    if (salaryMax) query.$and.push({ 'salary.max': { $lte: parseInt(salaryMax) } });
     if (query.$and.length === 0) delete query.$and;
   }
 

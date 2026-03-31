@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'applied' | 'screening' | 'interview' | 'offer' | 'rejected' | 'withdrawn';
+  variant?: 'default' | 'applied' | 'screening' | 'interview' | 'offer' | 'rejected' | 'withdrawn' | 'ghost';
 }
 
 const Badge = (props: BadgeProps) => {
@@ -19,6 +19,7 @@ const Badge = (props: BadgeProps) => {
     offer: 'bg-accent-primary/10 text-accent-primary border-accent-primary/20',
     rejected: 'bg-accent-danger/10 text-accent-danger border-accent-danger/20',
     withdrawn: 'bg-text-tertiary/10 text-text-tertiary border-text-tertiary/20',
+    ghost: 'bg-transparent text-text-secondary border-none shadow-none',
   };
 
   return (
@@ -32,10 +33,12 @@ const Badge = (props: BadgeProps) => {
       )}
       {...(rest as any)}
     >
-      <span className={cn(
-        "w-1.5 h-1.5 rounded-full mr-1.5",
-        variant === 'default' ? "bg-text-tertiary" : `bg-current`
-      )} />
+      {variant !== 'ghost' && (
+        <span className={cn(
+          "w-1.5 h-1.5 rounded-full mr-1.5",
+          variant === 'default' ? "bg-text-tertiary" : `bg-current`
+        )} />
+      )}
       {children}
     </motion.div>
   );

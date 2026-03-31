@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+export interface ButtonProps extends HTMLMotionProps<"button"> {
+  variant?: 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
@@ -17,10 +17,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, leftIcon, rightIcon, children, disabled, ...props }, ref) => {
     
     const variants = {
-      primary: 'bg-accent-primary text-background hover:shadow-[0_0_15px_rgba(110,231,183,0.2)] shadow-accent-primary/10',
-      secondary: 'bg-accent-secondary text-text-primary hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] shadow-accent-secondary/10',
-      ghost: 'bg-transparent text-text-secondary hover:bg-elevated hover:text-text-primary',
-      danger: 'bg-accent-danger text-text-primary hover:shadow-[0_0_15px_rgba(248,113,113,0.2)] shadow-accent-danger/10',
+      primary: 'bg-accent-primary text-bg-primary hover:bg-accent-secondary focus:ring-accent-primary',
+      secondary: 'bg-bg-secondary text-text-primary hover:bg-bg-elevated border border-border focus:ring-border',
+      danger: 'bg-accent-danger/10 text-accent-danger hover:bg-accent-danger/20 border border-transparent focus:ring-accent-danger',
+      outline: 'bg-transparent text-text-primary border border-text-tertiary/30 hover:bg-bg-elevated focus:ring-text-tertiary/30',
+      ghost: 'bg-transparent text-text-secondary hover:bg-elevated hover:text-text-primary border border-transparent focus:ring-transparent shadow-none',
     };
 
     const sizes = {
@@ -47,7 +48,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         )}
         {!isLoading && leftIcon && <span className="mr-2">{leftIcon}</span>}
-        <span className={cn(isLoading && 'opacity-0')}>{children}</span>
+        <span className={cn(isLoading && 'opacity-0')}>{children as React.ReactNode}</span>
         {!isLoading && rightIcon && <span className="ml-2">{rightIcon}</span>}
       </motion.button>
     );
