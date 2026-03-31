@@ -84,10 +84,46 @@ const notifyJobExpired = async (job) => {
   });
 };
 
+/**
+ * Notify recruiter of application withdrawal
+ */
+const notifyWithdrawal = async (application, applicant) => {
+  return await createNotification({
+    recipient: application.job.postedBy,
+    type: 'application_received', // Reusing type for recruiter inbox
+    title: 'Application Withdrawn',
+    message: `${applicant.firstName} ${applicant.lastName} has withdrawn their application for ${application.job.title}.`,
+    data: {
+      applicationId: application._id,
+      jobId: application.job._id,
+      applicantId: applicant._id
+    },
+    priority: 'low'
+  });
+};
+
+/**
+ * Notify applicant that a job has been closed
+ */
+const notifyJobClosed = async (application, job) => {
+  return await createNotification({
+    recipient: application.applicant,
+    type: 'application_status_update',
+    title: 'Job Post Closed',
+    message: `The job "${job.title}" has been closed.`,
+    data: {
+      jobId: job._id,
+      applicationId: application._id
+    },
+    priority: 'medium'
+  });
+};
+
 module.exports = {
   createNotification,
   notifyStageChange,
   notifyNewApplication,
   notifyJobExpired,
-  notifyWithdrawal
+  notifyWithdrawal,
+  notifyJobClosed
 };

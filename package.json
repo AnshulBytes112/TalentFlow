@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "description": "A comprehensive job application portal with frontend and backend",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
@@ -18,16 +14,14 @@
     "start:backend": "cd backend && npm start",
     "start:frontend": "cd frontend && npm start",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "clean": "rm -rf node_modules backend/node_modules frontend/node_modules"
+    "clean": "rimraf node_modules backend/node_modules frontend/node_modules"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "rimraf": "^5.0.0"
   },
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
-  },
-  "dependencies": {
-    "bcrypt": "^6.0.0"
   }
 }

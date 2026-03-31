@@ -7,7 +7,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { JOB_STATUS, JOB_TYPES, WORK_MODES, JOB_CATEGORIES, EXPERIENCE_LEVELS } = require('../utils/constants');
 const emailService = require('../services/emailService');
 const { emitToUser } = require('../services/socketService');
-const { createNotification } = require('../services/notificationService');
+const { createNotification, notifyJobClosed } = require('../services/notificationService');
 
 /**
  * @swagger
@@ -635,24 +635,10 @@ const closeJob = asyncHandler(async (req, res) => {
   setImmediate(async () => {
     const notifications = activeApplications.map(async (app) => {
       try {
-        // 1. Create In-app notification
-        await createNotification({
-          recipient: app.applicant._id,
-          sender: req.user._id,
-          type: 'system',
-          title: 'Job Closed',
-          message: `The job "${job.title}" has been closed.`,
-          data: { jobId: job._id, applicationId: app._id }
-        });
+        // 1. Centralized In-app notification & Socket emit
+        await notifyJobClosed(app, job);
 
-        // 2. Emit socket event
-        emitToUser(app.applicant._id, 'notification', {
-          type: 'JOB_CLOSED',
-          message: `The job "${job.title}" has been closed.`,
-          jobId: job._id
-        });
-
-        // 3. Send Email
+        // 2. Send Email
         return emailService.sendJobClosedEmail(app.applicant, job);
       } catch (err) {
         console.error(`Failed to notify applicant ${app.applicant._id}:`, err);

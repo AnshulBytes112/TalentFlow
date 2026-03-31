@@ -1,11 +1,11 @@
 const Notification = require('../models/Notification');
-const catchAsync = require('../utils/catchAsync');
-const AppError = require('../utils/appError');
+const asyncHandler = require('../utils/asyncHandler');
+const ApiError = require('../utils/ApiError');
 
 /**
  * Get all notifications for the authenticated user
  */
-exports.getMyNotifications = catchAsync(async (req, res, next) => {
+exports.getMyNotifications = asyncHandler(async (req, res, next) => {
   const { isRead, limit = 20, page = 1 } = req.query;
   const skip = (page - 1) * limit;
 
@@ -39,7 +39,7 @@ exports.getMyNotifications = catchAsync(async (req, res, next) => {
 /**
  * Get unread notification count
  */
-exports.getUnreadCount = catchAsync(async (req, res, next) => {
+exports.getUnreadCount = asyncHandler(async (req, res, next) => {
   const count = await Notification.countDocuments({
     recipient: req.user._id,
     status: 'unread',
@@ -57,7 +57,7 @@ exports.getUnreadCount = catchAsync(async (req, res, next) => {
 /**
  * Mark a specific notification as read
  */
-exports.markAsRead = catchAsync(async (req, res, next) => {
+exports.markAsRead = asyncHandler(async (req, res, next) => {
   const notification = await Notification.findOneAndUpdate(
     {
       _id: req.params.id,
@@ -71,7 +71,7 @@ exports.markAsRead = catchAsync(async (req, res, next) => {
   );
 
   if (!notification) {
-    return next(new AppError('No notification found with that ID', 404));
+    return next(ApiError.notFound('No notification found with that ID'));
   }
 
   res.status(200).json({
@@ -85,7 +85,7 @@ exports.markAsRead = catchAsync(async (req, res, next) => {
 /**
  * Mark all notifications as read for the user
  */
-exports.markAllAsRead = catchAsync(async (req, res, next) => {
+exports.markAllAsRead = asyncHandler(async (req, res, next) => {
   await Notification.updateMany(
     {
       recipient: req.user._id,
@@ -106,7 +106,7 @@ exports.markAllAsRead = catchAsync(async (req, res, next) => {
 /**
  * Soft delete a notification
  */
-exports.deleteNotification = catchAsync(async (req, res, next) => {
+exports.deleteNotification = asyncHandler(async (req, res, next) => {
   const notification = await Notification.findOneAndUpdate(
     {
       _id: req.params.id,
@@ -117,7 +117,7 @@ exports.deleteNotification = catchAsync(async (req, res, next) => {
   );
 
   if (!notification) {
-    return next(new AppError('No notification found with that ID', 404));
+    return next(ApiError.notFound('No notification found with that ID'));
   }
 
   res.status(204).json({

@@ -1,211 +1,197 @@
+'use client';
+
+import React from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Briefcase, Users, TrendingUp, Search } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight, Briefcase, Users, TrendingUp, Search, Globe, Shield, Zap } from 'lucide-react';
+import Navbar from '@/components/layout/Navbar';
+import Button from '@/components/ui/Button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
+import Badge from '@/components/ui/Badge';
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Navigation */}
-      <nav className="container mx-auto px-4 py-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Briefcase className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">JobPortal</span>
-          </div>
-          <div className="flex space-x-4">
-            <Link href="/auth/login">
-              <Button variant="outline">Sign In</Button>
-            </Link>
-            <Link href="/auth/register">
-              <Button>Get Started</Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <div className="relative min-h-screen">
+      <Navbar />
+      
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="text-center max-w-4xl mx-auto">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            Find Your Dream Job
-            <span className="text-blue-600"> Today</span>
-          </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            Connect with top companies and discover opportunities that match your skills and aspirations.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/jobs">
-              <Button size="lg" className="text-lg">
-                Browse Jobs <ArrowRight className="ml-2 h-5 w-5" />
+      <section className="container pt-40 pb-20 lg:pt-56 lg:pb-32">
+        <div className="flex flex-col items-center text-center max-w-5xl mx-auto space-y-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-6"
+          >
+            <Badge variant="screening" className="px-4 py-1.5 text-xs font-black uppercase tracking-[0.2em]">
+              The Future of Recruitment
+            </Badge>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-white leading-[1.05] tracking-tight">
+              Where <span className="text-luxury">Elite Talent</span> <br />
+              Meets Industry <span className="text-accent-primary italic">Pioneers</span>.
+            </h1>
+            <p className="text-xl lg:text-2xl text-text-secondary max-w-3xl mx-auto font-medium leading-relaxed">
+              TalentFlow is the premier recruitment ecosystem for high-growth tech companies and world-class professionals.
+            </p>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="flex flex-col sm:flex-row gap-6 w-full sm:w-auto"
+          >
+            <Link href="/register" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full text-lg px-10 py-8 font-black tracking-tight" rightIcon={<ArrowRight size={22} />}>
+                Join the Network
               </Button>
             </Link>
-            <Link href="/auth/register">
-              <Button size="lg" variant="outline" className="text-lg">
-                Post a Job
+            <Link href="/jobs" className="w-full sm:w-auto">
+              <Button variant="ghost" size="lg" className="w-full text-lg px-10 py-8 border border-border font-black tracking-tight hover:bg-elevated/50">
+                Explore Careers
               </Button>
             </Link>
-          </div>
+          </motion.div>
+
+          {/* Social Proof / Stats */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4, duration: 1 }}
+            className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-16 border-t border-border w-full"
+          >
+            {[
+              { label: 'Active Jobs', value: '12k+' },
+              { label: 'Trusted Partners', value: '450+' },
+              { label: 'Elite Members', value: '65k+' },
+              { label: 'Success Rate', value: '98%' },
+            ].map((stat, idx) => (
+              <div key={idx} className="text-center space-y-1">
+                <div className="text-3xl font-display font-black text-white">{stat.value}</div>
+                <div className="text-[10px] uppercase tracking-widest font-bold text-text-tertiary">{stat.label}</div>
+              </div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose JobPortal?</h2>
-          <p className="text-lg text-gray-600">Everything you need to advance your career</p>
-        </div>
-        
-        <div className="grid md:grid-cols-3 gap-8">
-          <Card className="text-center">
-            <CardHeader>
-              <Search className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-              <CardTitle>Smart Job Search</CardTitle>
-              <CardDescription>
-                Advanced filters and AI-powered recommendations to find the perfect match
+      {/* Value Propositions */}
+      <section className="container py-20 lg:py-40">
+        <div className="grid lg:grid-cols-3 gap-8">
+          <Card className="group relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+              <Shield size={120} />
+            </div>
+            <CardHeader className="relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-accent-primary/10 flex items-center justify-center text-accent-primary mb-4">
+                <Shield size={24} />
+              </div>
+              <CardTitle className="text-2xl uppercase tracking-tight">Vetted Excellence</CardTitle>
+              <CardDescription className="text-base text-text-secondary">
+                Every candidate and recruiter undergoes a rigorous quality check to maintain our high-performance ecosystem.
               </CardDescription>
             </CardHeader>
           </Card>
-          
-          <Card className="text-center">
-            <CardHeader>
-              <Users className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-              <CardTitle>Direct Connection</CardTitle>
-              <CardDescription>
-                Connect directly with recruiters and hiring managers
-              </CardDescription>
-            </CardHeader>
-          </Card>
-          
-          <Card className="text-center">
-            <CardHeader>
-              <TrendingUp className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-              <CardTitle>Career Insights</CardTitle>
-              <CardDescription>
-                Track your applications and get valuable career insights
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </section>
 
-      {/* Stats Section */}
-      <section className="bg-blue-600 text-white py-20">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold mb-2">10,000+</div>
-              <div className="text-blue-100">Active Jobs</div>
+          <Card variant="elevated" className="group relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+              <Zap size={120} />
             </div>
-            <div>
-              <div className="text-4xl font-bold mb-2">5,000+</div>
-              <div className="text-blue-100">Companies</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold mb-2">50,000+</div>
-              <div className="text-blue-100">Job Seekers</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold mb-2">95%</div>
-              <div className="text-blue-100">Success Rate</div>
-            </div>
-          </div>
-        </div>
-      </section>
+            <CardHeader className="relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-accent-secondary/10 flex items-center justify-center text-accent-secondary mb-4">
+                <Zap size={24} />
+              </div>
+              <CardTitle className="text-2xl uppercase tracking-tight">Hyper-Growth Sync</CardTitle>
+              <CardDescription className="text-base text-text-secondary">
+                Real-time pipelines and smart matching algorithms accelerate your hiring cycle by 3x.
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
-      {/* Popular Categories */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Popular Categories</h2>
-          <p className="text-lg text-gray-600">Explore opportunities in trending fields</p>
-        </div>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            'Engineering',
-            'Design',
-            'Marketing',
-            'Sales',
-            'Customer Support',
-            'Product',
-            'Data Science',
-            'HR'
-          ].map((category) => (
-            <Card key={category} className="hover:shadow-lg transition-shadow cursor-pointer">
-              <CardContent className="p-6 text-center">
-                <h3 className="font-semibold text-lg mb-2">{category}</h3>
-                <Badge variant="secondary">500+ jobs</Badge>
-              </CardContent>
-            </Card>
-          ))}
+          <Card className="group relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+              <Globe size={120} />
+            </div>
+            <CardHeader className="relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-text-tertiary/10 flex items-center justify-center text-text-secondary mb-4">
+                <Globe size={24} />
+              </div>
+              <CardTitle className="text-2xl uppercase tracking-tight">Global Connectivity</CardTitle>
+              <CardDescription className="text-base text-text-secondary">
+                Tap into a borderless talent market. From Silicon Valley to Singapore, we've got you covered.
+              </CardDescription>
+            </CardHeader>
+          </Card>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="bg-gray-900 text-white py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-          <p className="text-lg mb-8 text-gray-300">
-            Join thousands of professionals who found their dream job through JobPortal
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/register">
-              <Button size="lg" variant="secondary" className="text-lg">
-                Create Account
-              </Button>
-            </Link>
-            <Link href="/jobs">
-              <Button size="lg" variant="outline" className="text-lg border-white text-white hover:bg-white hover:text-gray-900">
-                Explore Jobs
-              </Button>
-            </Link>
+      <section className="container py-20 lg:py-40">
+        <Card variant="elevated" className="bg-bg-secondary p-12 lg:p-24 overflow-hidden relative border-accent-primary/20">
+          <div className="absolute inset-0 mesh-gradient opacity-20 pointer-events-none" />
+          <div className="relative z-10 flex flex-col items-center text-center space-y-8 max-w-3xl mx-auto">
+            <h2 className="text-4xl lg:text-6xl font-display font-black text-white tracking-tight">
+              Ready to <span className="italic text-accent-primary underline decoration-accent-primary/30 underline-offset-8">Elevate</span> Your Career?
+            </h2>
+            <p className="text-xl text-text-secondary font-medium">
+              Join the waiting list or create an account today to access exclusive opportunities and world-class talent.
+            </p>
+            <div className="flex gap-4">
+              <Link href="/register">
+                <Button size="lg" className="font-black px-8">Get Started Now</Button>
+              </Link>
+              <Button variant="ghost" className="border border-border font-black px-8">Talk to Sales</Button>
+            </div>
           </div>
-        </div>
+        </Card>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-100 py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Briefcase className="h-6 w-6 text-blue-600" />
-                <span className="text-xl font-bold">JobPortal</span>
+      <footer className="border-t border-border bg-bg-secondary/30 pt-20 pb-10">
+        <div className="container grid md:grid-cols-4 gap-12 mb-20">
+          <div className="col-span-1 md:col-span-2 space-y-6">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-accent-primary flex items-center justify-center rotate-12">
+                <span className="font-display font-black text-bg-primary text-xl">T</span>
               </div>
-              <p className="text-gray-600">Your gateway to career opportunities</p>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">For Job Seekers</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li><Link href="/jobs" className="hover:text-blue-600">Browse Jobs</Link></li>
-                <li><Link href="/resources" className="hover:text-blue-600">Career Resources</Link></li>
-                <li><Link href="/salary" className="hover:text-blue-600">Salary Guide</Link></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">For Employers</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li><Link href="/post-job" className="hover:text-blue-600">Post a Job</Link></li>
-                <li><Link href="/pricing" className="hover:text-blue-600">Pricing</Link></li>
-                <li><Link href="/resources/employers" className="hover:text-blue-600">Resources</Link></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li><Link href="/about" className="hover:text-blue-600">About Us</Link></li>
-                <li><Link href="/contact" className="hover:text-blue-600">Contact</Link></li>
-                <li><Link href="/privacy" className="hover:text-blue-600">Privacy Policy</Link></li>
-              </ul>
-            </div>
+              <span className="font-display font-black text-2xl tracking-tight text-white italic">TalentFlow</span>
+            </Link>
+            <p className="text-text-secondary font-medium max-w-sm leading-relaxed">
+              The editorial job platform for the world&apos;s most innovative technology companies.
+            </p>
           </div>
           
-          <div className="border-t mt-8 pt-8 text-center text-gray-600">
-            <p>&copy; 2024 JobPortal. All rights reserved.</p>
+          <div className="space-y-4">
+            <h4 className="text-xs font-black uppercase tracking-widest text-text-tertiary">Platform</h4>
+            <ul className="space-y-3">
+              {['Browse Jobs', 'Companies', 'Recruiters', 'Talent Search'].map(link => (
+                <li key={link}>
+                  <Link href="#" className="text-sm font-bold text-text-secondary hover:text-accent-primary transition-colors">{link}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-xs font-black uppercase tracking-widest text-text-tertiary">Community</h4>
+            <ul className="space-y-3">
+              {['Pricing', 'Case Studies', 'Legal', 'Privacy'].map(link => (
+                <li key={link}>
+                  <Link href="#" className="text-sm font-bold text-text-secondary hover:text-accent-primary transition-colors">{link}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        
+        <div className="container border-t border-border pt-10 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest">
+            &copy; 2026 TalentFlow Ecosystem. All Rights Reserved.
+          </p>
+          <div className="flex gap-6 text-[10px] font-bold text-text-tertiary uppercase tracking-widest">
+            <Link href="#" className="hover:text-text-primary transition-colors">Twitter</Link>
+            <Link href="#" className="hover:text-text-primary transition-colors">LinkedIn</Link>
+            <Link href="#" className="hover:text-text-primary transition-colors">Discord</Link>
           </div>
         </div>
       </footer>
