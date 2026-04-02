@@ -8,13 +8,19 @@ export default withAuth(
 
     // Redirect authenticated users away from auth pages
     if (token && (pathname.startsWith('/login') || pathname.startsWith('/register'))) {
-      const redirectPath = token.role === 'recruiter' ? '/recruiter' : '/jobseeker';
+      const redirectPath = token.role === 'recruiter' ? '/recruiter' : token.role === 'admin' ? '/dashboard' : '/jobseeker';
       return NextResponse.redirect(new URL(redirectPath, req.url));
     }
 
     // Redirect generic /dashboard/* to role-specific dashboards, preserving sub-paths
     if (pathname.startsWith('/dashboard')) {
       const subPath = pathname.replace('/dashboard', ''); // e.g. /jobseeker/applications
+
+      // Allow admins to access /dashboard and /dashboard/admin/* directly
+      if (token?.role === 'admin') {
+        return NextResponse.next();
+      }
+
       const roleBase = token?.role === 'recruiter' ? '/recruiter' : '/jobseeker';
       // Special case: /dashboard/profile should not be redirected to /jobseeker/profile
       if (subPath === '/profile') {
@@ -28,10 +34,10 @@ export default withAuth(
     }
 
     // Role-based route guard
-    if (pathname.startsWith('/jobseeker') && token?.role !== 'jobseeker') {
+    if (pathname.startsWith('/jobseeker') && token?.role !== 'jobseeker' && token?.role !== 'admin') {
       return NextResponse.redirect(new URL('/recruiter', req.url));
     }
-    if (pathname.startsWith('/recruiter') && token?.role !== 'recruiter') {
+    if (pathname.startsWith('/recruiter') && token?.role !== 'recruiter' && token?.role !== 'admin') {
       return NextResponse.redirect(new URL('/jobseeker', req.url));
     }
 

@@ -22,7 +22,7 @@ import { toast } from 'react-hot-toast';
 export default function JobDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   
   const [job, setJob] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,8 +42,10 @@ export default function JobDetailsPage() {
   };
 
   useEffect(() => {
+    // Fetch after auth state resolves so userApplication is returned for logged-in jobseekers.
+    if (status === 'loading') return;
     fetchJob();
-  }, [id]);
+  }, [id, status]);
 
   const {
     companyName, companyLogo, companyWebsite, companyDesc,

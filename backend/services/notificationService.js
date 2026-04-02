@@ -123,20 +123,30 @@ const notifyJobClosed = async (application, job) => {
  * Notify applicant that a job has been updated
  */
 const notifyJobUpdated = async (application, job, updatedFields = []) => {
-  const fieldText = updatedFields.length > 0
-    ? ` Updated fields: ${updatedFields.join(', ')}.`
-    : '';
+  const importantFields = ['title', 'description', 'requirements', 'skills', 'location', 'job type', 'application deadline', 'work mode', 'minimum salary', 'maximum salary', 'salary', 'company details', 'company name', 'company description', 'compensation type'];
+  const normalized = updatedFields
+    .map((field) => String(field || '').trim().toLowerCase())
+    .filter((field) => importantFields.includes(field));
+
+  const uniqueFields = Array.from(new Set(normalized));
+  const highlighted = uniqueFields.slice(0, 2);
+
+  let message = `A job you applied to was updated: "${job.title}".`;
+  if (highlighted.length > 0) {
+    message += ` Updated: ${highlighted.join(' and ')}.`;
+  }
+  message += ' Open it to review the latest details.';
 
   return await createNotification({
     recipient: application.applicant,
     type: 'application_status_update',
     title: 'Job Post Updated',
-    message: `The job "${job.title}" you applied for has been updated.${fieldText}`,
+    message,
     data: {
       jobId: job._id,
       applicationId: application._id,
       url: `/jobs/${job._id}`,
-      actionText: 'View Job Updates'
+      actionText: 'View Job'
     },
     priority: 'medium'
   });

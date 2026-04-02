@@ -131,10 +131,11 @@ const LoginPage = () => {
             <Input
               label="Email Address"
               type="email"
+              autoComplete="email"
               placeholder="name@company.com"
               leftIcon={<Mail size={18} />}
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
               required
             />
             
@@ -142,6 +143,7 @@ const LoginPage = () => {
               <Input
                 label="Password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
                 placeholder="••••••••"
                 leftIcon={<Lock size={18} />}
                 rightIcon={
@@ -154,7 +156,7 @@ const LoginPage = () => {
                   </button>
                 }
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
                 required
               />
               <div className="flex justify-end">
@@ -189,8 +191,8 @@ const LoginPage = () => {
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-border" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase tracking-widest font-black text-text-tertiary">
-              <span className="bg-bg-primary px-4">Or continue with</span>
+            <div className="relative z-10 flex justify-center text-xs uppercase tracking-widest font-black text-text-tertiary leading-none">
+              <span className="inline-flex bg-bg-primary px-4 py-1">Or continue with</span>
             </div>
           </div>
 

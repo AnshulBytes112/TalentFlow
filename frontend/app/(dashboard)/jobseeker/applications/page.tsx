@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import DashboardUserPanel from '@/components/layout/DashboardUserPanel';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -128,11 +129,14 @@ export default function ApplicationsPage() {
               Monitor your job search progress and manage your applications.
             </p>
           </div>
-          <Link href="/jobs">
-             <Button className="px-6 py-3 font-bold rounded-xl whitespace-nowrap">
-                Browse More Jobs
-             </Button>
-          </Link>
+          <div className="flex items-center gap-3 self-start md:self-auto">
+            <Link href="/jobs">
+               <Button className="px-6 py-3 font-bold rounded-xl whitespace-nowrap">
+                  Browse More Jobs
+               </Button>
+            </Link>
+            <DashboardUserPanel />
+          </div>
         </header>
 
         {/* Stats Row */}

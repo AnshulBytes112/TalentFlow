@@ -134,6 +134,142 @@ export default function JobsPage() {
 
   const toggleMobileFilters = () => setShowMobileFilters(!showMobileFilters);
 
+  const filterPanel = (
+    <Card className="p-6 space-y-8 bg-elevated/30 border-border">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-display font-black tracking-tight text-white uppercase">Filters</h2>
+        <button onClick={clearFilters} className="text-xs font-bold text-text-tertiary hover:text-accent-primary transition-colors">
+          Clear all
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Job Type</h3>
+        <div className="flex flex-col gap-3">
+          {JOB_TYPES.map(type => (
+            <label key={type} className="flex items-center gap-3 cursor-pointer group">
+              <div className="relative flex items-center justify-center w-5 h-5 rounded border border-border bg-bg-secondary group-hover:border-accent-primary transition-colors">
+                {selectedTypes.includes(type) && <motion.div layoutId={`check-type-${type}`} className="w-2.5 h-2.5 bg-accent-primary rounded-sm" />}
+              </div>
+              <input type="checkbox" className="sr-only" checked={selectedTypes.includes(type)} onChange={() => toggleFilter(selectedTypes, setSelectedTypes, type)} />
+              <span className="text-sm font-medium text-text-secondary group-hover:text-white transition-colors capitalize">{type.replace('-', ' ')}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Work Mode</h3>
+        <div className="flex flex-col gap-3">
+          {WORK_MODES.map(mode => (
+            <label key={mode} className="flex items-center gap-3 cursor-pointer group">
+              <div className="relative flex items-center justify-center w-5 h-5 rounded border border-border bg-bg-secondary group-hover:border-accent-primary transition-colors">
+                {selectedModes.includes(mode) && <motion.div layoutId={`check-mode-${mode}`} className="w-2.5 h-2.5 bg-accent-primary rounded-sm" />}
+              </div>
+              <input type="checkbox" className="sr-only" checked={selectedModes.includes(mode)} onChange={() => toggleFilter(selectedModes, setSelectedModes, mode)} />
+              <span className="text-sm font-medium text-text-secondary group-hover:text-white transition-colors capitalize">{mode}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Other</h3>
+        <div className="flex flex-col gap-3">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" className="form-checkbox h-4 w-4 text-accent-primary bg-bg-secondary border-border rounded" checked={filterUnpaid} onChange={(e) => setFilterUnpaid(e.target.checked)} />
+            <span className="text-sm font-medium text-text-secondary group-hover:text-white transition-colors">Show unpaid only</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="space-y-4 pt-2">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Category</h3>
+        <div className="flex flex-col gap-3">
+          <select
+            value={selectedCategory}
+            onChange={(e) => {
+              setSelectedCategory(e.target.value);
+              setSelectedTypes([]);
+              setSelectedModes([]);
+              setSelectedExperience('');
+            }}
+            className="w-full bg-bg-primary border border-border text-text-primary focus:ring-0 focus:ring-accent-primary/20 rounded-lg px-4 py-3"
+          >
+            <option value="">All Categories</option>
+            {JOB_CATEGORIES.map(cat => (
+              <option key={cat} value={cat}>{cat.replace('-', ' ')}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="space-y-4 pt-2">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Experience Level</h3>
+        <div className="flex flex-col gap-3">
+          <select
+            value={selectedExperience}
+            onChange={(e) => {
+              setSelectedExperience(e.target.value);
+              setSelectedTypes([]);
+              setSelectedModes([]);
+              setSelectedCategory('');
+            }}
+            className="w-full bg-bg-primary border border-border text-text-primary focus:ring-0 focus:ring-accent-primary/20 rounded-lg px-4 py-3"
+          >
+            <option value="">All Levels</option>
+            {EXPERIENCE_LEVELS.map(level => (
+              <option key={level} value={level}>{level.replace('-', ' ')}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="space-y-4 pt-2">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary flex justify-between">
+          Salary Range
+          <span className="text-accent-primary font-mono">${salaryRange[0] / 1000}k - ${salaryRange[1] >= 200000 ? '200k+' : `${salaryRange[1]/1000}k`}</span>
+        </h3>
+        <Slider.Root
+          className="relative flex items-center select-none touch-none w-full h-5 mt-4 group"
+          value={salaryRange}
+          max={200000}
+          step={5000}
+          minStepsBetweenThumbs={1}
+          onValueChange={(val: [number, number]) => setSalaryRange(val)}
+        >
+          <Slider.Track className="bg-border relative grow rounded-full h-[3px]">
+            <Slider.Range className="absolute bg-accent-primary/50 group-hover:bg-accent-primary rounded-full h-full transition-colors" />
+          </Slider.Track>
+          <Slider.Thumb className="block w-4 h-4 bg-accent-primary border border-accent-secondary rounded-full hover:scale-110 focus:outline-none focus:ring-4 focus:ring-accent-primary/20 transition-all cursor-grab active:cursor-grabbing outline-none" aria-label="Minimum Salary" />
+          <Slider.Thumb className="block w-4 h-4 bg-accent-primary border border-accent-secondary rounded-full hover:scale-110 focus:outline-none focus:ring-4 focus:ring-accent-primary/20 transition-all cursor-grab active:cursor-grabbing outline-none" aria-label="Maximum Salary" />
+        </Slider.Root>
+      </div>
+
+      <div className="space-y-4 pt-2">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Skills</h3>
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {skills.map(skill => (
+              <span key={skill} className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider bg-accent-primary/10 text-accent-primary px-2 py-1 rounded border border-accent-primary/20">
+                {skill}
+                <button onClick={() => removeSkill(skill)} className="hover:text-white transition-colors outline-none"><X size={12} /></button>
+              </span>
+            ))}
+          </div>
+          <Input
+            label="Add Skill"
+            placeholder="Type skill & enter"
+            value={skillInput}
+            onChange={e => setSkillInput(e.target.value)}
+            onKeyDown={handleAddSkill}
+            className="bg-bg-primary h-12 py-3"
+          />
+        </div>
+      </div>
+    </Card>
+  );
+
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary selection:bg-accent-primary selection:text-bg-primary">
       <Navbar />
@@ -225,151 +361,24 @@ export default function JobsPage() {
               </Button>
             </div>
 
-            {/* Filters Sidebar */}
+            {/* Filters Sidebar (mobile) */}
             <AnimatePresence>
-              {(showMobileFilters || typeof window !== 'undefined' && window.innerWidth >= 1024) && (
-                <motion.aside 
+              {showMobileFilters && (
+                <motion.aside
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="w-full lg:w-72 flex-shrink-0 lg:sticky lg:top-32 overflow-hidden lg:overflow-visible"
+                  className="w-full lg:hidden flex-shrink-0 overflow-hidden"
                 >
-                  <Card className="p-6 space-y-8 bg-elevated/30 border-border">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-display font-black tracking-tight text-white uppercase">Filters</h2>
-                      <button onClick={clearFilters} className="text-xs font-bold text-text-tertiary hover:text-accent-primary transition-colors">
-                        Clear all
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Job Type</h3>
-                      <div className="flex flex-col gap-3">
-                        {JOB_TYPES.map(type => (
-                          <label key={type} className="flex items-center gap-3 cursor-pointer group">
-                            <div className="relative flex items-center justify-center w-5 h-5 rounded border border-border bg-bg-secondary group-hover:border-accent-primary transition-colors">
-                              {selectedTypes.includes(type) && <motion.div layoutId={`check-type-${type}`} className="w-2.5 h-2.5 bg-accent-primary rounded-sm" />}
-                            </div>
-                            <input type="checkbox" className="sr-only" checked={selectedTypes.includes(type)} onChange={() => toggleFilter(selectedTypes, setSelectedTypes, type)} />
-                            <span className="text-sm font-medium text-text-secondary group-hover:text-white transition-colors capitalize">{type.replace('-', ' ')}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Work Mode</h3>
-                      <div className="flex flex-col gap-3">
-                        {WORK_MODES.map(mode => (
-                          <label key={mode} className="flex items-center gap-3 cursor-pointer group">
-                            <div className="relative flex items-center justify-center w-5 h-5 rounded border border-border bg-bg-secondary group-hover:border-accent-primary transition-colors">
-                              {selectedModes.includes(mode) && <motion.div layoutId={`check-mode-${mode}`} className="w-2.5 h-2.5 bg-accent-primary rounded-sm" />}
-                            </div>
-                            <input type="checkbox" className="sr-only" checked={selectedModes.includes(mode)} onChange={() => toggleFilter(selectedModes, setSelectedModes, mode)} />
-                            <span className="text-sm font-medium text-text-secondary group-hover:text-white transition-colors capitalize">{mode}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Other</h3>
-                      <div className="flex flex-col gap-3">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <input type="checkbox" className="form-checkbox h-4 w-4 text-accent-primary bg-bg-secondary border-border rounded" checked={filterUnpaid} onChange={(e) => setFilterUnpaid(e.target.checked)} />
-                          <span className="text-sm font-medium text-text-secondary group-hover:text-white transition-colors">Show unpaid only</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 pt-2">
-                       <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Category</h3>
-                       <div className="flex flex-col gap-3">
-                         <select 
-                           value={selectedCategory} 
-                           onChange={(e) => {
-                             setSelectedCategory(e.target.value);
-                             setSelectedTypes([]);
-                             setSelectedModes([]);
-                             setSelectedExperience('');
-                           }}
-                           className="w-full bg-bg-primary border border-border text-text-primary focus:ring-0 focus:ring-accent-primary/20 rounded-lg px-4 py-3"
-                         >
-                           <option value="">All Categories</option>
-                           {JOB_CATEGORIES.map(cat => (
-                             <option key={cat} value={cat}>{cat.replace('-', ' ')}</option>
-                           ))}
-                         </select>
-                       </div>
-                    </div>
-
-                    <div className="space-y-4 pt-2">
-                       <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Experience Level</h3>
-                       <div className="flex flex-col gap-3">
-                         <select 
-                           value={selectedExperience} 
-                           onChange={(e) => {
-                             setSelectedExperience(e.target.value);
-                             setSelectedTypes([]);
-                             setSelectedModes([]);
-                             setSelectedCategory('');
-                           }}
-                           className="w-full bg-bg-primary border border-border text-text-primary focus:ring-0 focus:ring-accent-primary/20 rounded-lg px-4 py-3"
-                         >
-                           <option value="">All Levels</option>
-                           {EXPERIENCE_LEVELS.map(level => (
-                             <option key={level} value={level}>{level.replace('-', ' ')}</option>
-                           ))}
-                         </select>
-                       </div>
-                    </div>
-
-                    <div className="space-y-4 pt-2">
-                       <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary flex justify-between">
-                          Salary Range
-                          <span className="text-accent-primary font-mono">${salaryRange[0] / 1000}k - ${salaryRange[1] >= 200000 ? '200k+' : `${salaryRange[1]/1000}k`}</span>
-                       </h3>
-                       <Slider.Root
-                          className="relative flex items-center select-none touch-none w-full h-5 mt-4 group"
-                          value={salaryRange}
-                          max={200000}
-                          step={5000}
-                          minStepsBetweenThumbs={1}
-                          onValueChange={(val: [number, number]) => setSalaryRange(val)}
-                        >
-                          <Slider.Track className="bg-border relative grow rounded-full h-[3px]">
-                            <Slider.Range className="absolute bg-accent-primary/50 group-hover:bg-accent-primary rounded-full h-full transition-colors" />
-                          </Slider.Track>
-                          <Slider.Thumb className="block w-4 h-4 bg-accent-primary border border-accent-secondary rounded-full hover:scale-110 focus:outline-none focus:ring-4 focus:ring-accent-primary/20 transition-all cursor-grab active:cursor-grabbing outline-none" aria-label="Minimum Salary" />
-                          <Slider.Thumb className="block w-4 h-4 bg-accent-primary border border-accent-secondary rounded-full hover:scale-110 focus:outline-none focus:ring-4 focus:ring-accent-primary/20 transition-all cursor-grab active:cursor-grabbing outline-none" aria-label="Maximum Salary" />
-                        </Slider.Root>
-                    </div>
-
-                    <div className="space-y-4 pt-2">
-                      <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Skills</h3>
-                      <div className="space-y-3">
-                         <div className="flex flex-wrap gap-2">
-                           {skills.map(skill => (
-                              <span key={skill} className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider bg-accent-primary/10 text-accent-primary px-2 py-1 rounded border border-accent-primary/20">
-                                {skill}
-                                <button onClick={() => removeSkill(skill)} className="hover:text-white transition-colors outline-none"><X size={12} /></button>
-                              </span>
-                           ))}
-                         </div>
-                         <Input 
-                           label="Add Skill"
-                           placeholder="Type skill & enter" 
-                           value={skillInput}
-                           onChange={e => setSkillInput(e.target.value)}
-                           onKeyDown={handleAddSkill}
-                           className="bg-bg-primary h-12 py-3"
-                         />
-                      </div>
-                    </div>
-                  </Card>
+                  {filterPanel}
                 </motion.aside>
               )}
             </AnimatePresence>
+
+            {/* Filters Sidebar (desktop) */}
+            <aside className="hidden lg:block w-full lg:w-72 flex-shrink-0 lg:sticky lg:top-32">
+              {filterPanel}
+            </aside>
 
             {/* Main Content Area */}
             <div className="flex-1 w-full min-w-0">

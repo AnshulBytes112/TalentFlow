@@ -250,11 +250,14 @@ const updateJob = asyncHandler(async (req, res) => {
     deadline: 'application deadline',
     expiryDate: 'application deadline',
     companyDescription: 'company description',
+    company: 'company details',
     benefits: 'benefits',
     companyName: 'company name',
     category: 'category',
     experience: 'experience level',
-    status: 'status'
+    status: 'status',
+    workMode: 'work mode',
+    isUnpaid: 'compensation type'
   };
 
   const job = await Job.findById(id);
@@ -617,12 +620,14 @@ const getJobById = asyncHandler(async (req, res) => {
     userApplication = await Application.findOne({
       job: id,
       applicant: req.user._id
-    }).select('stage');
+    }).select('status stage');
   }
 
   const responseData = {
     ...job.toObject(),
-    userApplication: userApplication ? userApplication.stage : null
+    userApplication: userApplication
+      ? (userApplication.status || userApplication.stage || null)
+      : null
   };
 
   res.json(

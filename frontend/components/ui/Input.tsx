@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
@@ -16,12 +16,67 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, leftIcon, rightIcon, value, onChange, onFocus, onBlur, ...props }, ref) => {
     const [isFocused, setIsFocused] = useState(false);
     const [hasValue, setHasValue] = useState(!!value);
+    const internalRef = useRef<HTMLInputElement | null>(null);
+
+    const setRefs = (el: HTMLInputElement | null) => {
+      internalRef.current = el;
+      if (typeof ref === 'function') {
+        ref(el);
+      } else if (ref) {
+        (ref as React.MutableRefObject<HTMLInputElement | null>).current = el;
+      }
+    };
+
+    const syncAutofillToState = () => {
+      const currentValue = internalRef.current?.value || '';
+      if (currentValue && currentValue !== String(value ?? '')) {
+        setHasValue(true);
+        onChange?.({
+          target: { value: currentValue },
+          currentTarget: { value: currentValue }
+        } as React.ChangeEvent<HTMLInputElement>);
+      }
+    };
 
     useEffect(() => {
         setHasValue(!!value);
     }, [value]);
 
+    useLayoutEffect(() => {
+      // On first paint, pick up browser-injected values (autofill/password manager)
+      // so label and typed value don't overlap visually.
+      syncAutofillToState();
+    }, []);
+
+    useEffect(() => {
+      // Browser/password-manager autofill often updates DOM value without firing React events.
+      const t1 = window.setTimeout(syncAutofillToState, 60);
+      const t2 = window.setTimeout(syncAutofillToState, 400);
+
+      const intervalId = window.setInterval(syncAutofillToState, 250);
+      const stopPollingId = window.setTimeout(() => {
+        window.clearInterval(intervalId);
+      }, 6000);
+
+      const observer = new MutationObserver(syncAutofillToState);
+      if (internalRef.current) {
+        observer.observe(internalRef.current, {
+          attributes: true,
+          attributeFilter: ['value']
+        });
+      }
+
+      return () => {
+        window.clearTimeout(t1);
+        window.clearTimeout(t2);
+        window.clearTimeout(stopPollingId);
+        window.clearInterval(intervalId);
+        observer.disconnect();
+      };
+    }, [value]);
+
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+      syncAutofillToState();
       setIsFocused(true);
       onFocus?.(e);
     };
@@ -45,7 +100,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
           
           <input
-            ref={ref}
+            ref={setRefs}
             value={value}
             onChange={(e) => {
               setHasValue(!!e.target.value);
@@ -54,8 +109,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             onFocus={handleFocus}
             onBlur={handleBlur}
             className={cn(
-              'peer w-full h-full bg-transparent text-text-primary outline-none placeholder:opacity-0',
-              'pt-5 pb-1', // Padding to push text down to make room for label
+              'peer relative z-20 w-full h-full bg-transparent text-text-primary outline-none placeholder:opacity-0 caret-accent-primary',
+              'pt-6 pb-1', // Extra top padding keeps text clear of floating label
               leftIcon ? 'pl-11' : 'pl-4',
               rightIcon ? 'pr-11' : 'pr-4',
               error && 'text-accent-danger',
@@ -74,14 +129,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <motion.label
             initial={false}
             animate={{
-              top: isFloating ? '25%' : '50%',
+              top: isFloating ? '18%' : '50%',
               y: '-50%',
-              scale: isFloating ? 0.75 : 1,
+              scale: isFloating ? 0.72 : 1,
               color: error ? '#F87171' : (isFocused ? '#6EE7B7' : '#94A3B8'),
             } as any}
             transition={{ duration: 0.15, ease: 'easeOut' }}
             className={cn(
-              "absolute pointer-events-none origin-left font-medium z-10",
+              "absolute pointer-events-none origin-left font-medium z-30",
               leftIcon ? "left-11" : "left-4"
             )}
             style={{

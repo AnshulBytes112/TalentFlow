@@ -232,22 +232,23 @@ const RegisterPage = () => {
                         label="First Name"
                         leftIcon={<User size={18} />}
                         value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, firstName: e.target.value }))}
                         required
                       />
                       <Input
                         label="Last Name"
                         value={formData.lastName}
-                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, lastName: e.target.value }))}
                         required
                       />
                    </div>
                   <Input
                     label="Email Address"
                     type="email"
+                    autoComplete="email"
                     leftIcon={<Mail size={18} />}
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
                     required
                   />
 
@@ -255,9 +256,10 @@ const RegisterPage = () => {
                     <Input
                       label="Password"
                       type="password"
+                      autoComplete="new-password"
                       leftIcon={<Lock size={18} />}
                       value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
                       required
                     />
                     
@@ -285,9 +287,10 @@ const RegisterPage = () => {
                   <Input
                     label="Confirm Password"
                     type="password"
+                    autoComplete="new-password"
                     leftIcon={<Lock size={18} />}
                     value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                     required
                   />
 

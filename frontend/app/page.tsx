@@ -13,7 +13,7 @@ export default function HomePage() {
   return (
     <div className="relative min-h-screen">
       <Navbar />
-      
+
       {/* Hero Section */}
       <section className="container pt-40 pb-20 lg:pt-56 lg:pb-32">
         <div className="flex flex-col items-center text-center max-w-5xl mx-auto space-y-10">
