@@ -37,7 +37,15 @@ const jobSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['full-time', 'part-time', 'contract', 'internship', 'remote']
+    enum: ['full-time', 'part-time', 'contract', 'internship']
+  },
+  workMode: {
+    type: String,
+    enum: ['onsite', 'remote', 'hybrid']
+  },
+  isUnpaid: {
+    type: Boolean,
+    default: false
   },
   category: {
     type: String,
@@ -146,6 +154,8 @@ jobSchema.index({ status: 1 });
 jobSchema.index({ postedBy: 1 });
 jobSchema.index({ featured: 1 });
 jobSchema.index({ expiryDate: 1 });
+jobSchema.index({ workMode: 1 });
+jobSchema.index({ isUnpaid: 1 });
 
 // Virtual for checking if job is expired
 jobSchema.virtual('isExpired').get(function () {
@@ -189,6 +199,16 @@ jobSchema.statics.findActiveJobs = function (filters = {}) {
   // Job type filter
   if (filters.type) {
     query.type = filters.type;
+  }
+
+  // Work mode filter
+  if (filters.workMode) {
+    query.workMode = filters.workMode;
+  }
+
+  // Unpaid filter (accepts boolean or string)
+  if (filters.unpaid !== undefined) {
+    query.isUnpaid = filters.unpaid === true || filters.unpaid === 'true';
   }
 
   // Category filter

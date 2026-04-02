@@ -35,6 +35,7 @@ const Navbar = () => {
   // Notification state
   const [notifications, setNotifications] = useState<UINotification[]>([]);
   const lastLoadedTokenRef = useRef<string | null>(null);
+  const hasLoadedNotificationListRef = useRef(false);
 
   const notificationsHref = '/notifications';
 
@@ -46,21 +47,26 @@ const Navbar = () => {
     read: n.status === 'read' || n.read === true,
   });
 
-  const loadNotifications = async () => {
+  const loadNotificationList = async () => {
     try {
-      const [listRes, unreadRes] = await Promise.all([
-        api.get('/api/notifications?limit=5&page=1'),
-        api.get('/api/notifications/unread-count'),
-      ]);
+      const listRes = await api.get('/api/notifications?limit=5&page=1');
 
       const list = listRes?.data?.data?.notifications || [];
-      const unread = unreadRes?.data?.data?.count || 0;
 
       setNotifications(list.map(mapNotification));
-      setUnreadCount(unread);
+      hasLoadedNotificationListRef.current = true;
     } catch (error) {
       // Silent fallback: navbar should still render if notifications endpoint fails.
       setNotifications([]);
+    }
+  };
+
+  const loadUnreadCount = async () => {
+    try {
+      const unreadRes = await api.get('/api/notifications/unread-count');
+      const unread = unreadRes?.data?.data?.count || 0;
+      setUnreadCount(unread);
+    } catch (error) {
       setUnreadCount(0);
     }
   };
@@ -79,6 +85,7 @@ const Navbar = () => {
   useEffect(() => {
     if (!accessToken) {
       lastLoadedTokenRef.current = null;
+      hasLoadedNotificationListRef.current = false;
       setNotifications([]);
       setUnreadCount(0);
       return;
@@ -89,8 +96,17 @@ const Navbar = () => {
     }
 
     lastLoadedTokenRef.current = accessToken;
-    void loadNotifications();
+    hasLoadedNotificationListRef.current = false;
+    void loadUnreadCount();
   }, [accessToken]);
+
+  useEffect(() => {
+    if (!isNotifOpen || !accessToken || hasLoadedNotificationListRef.current) {
+      return;
+    }
+
+    void loadNotificationList();
+  }, [isNotifOpen, accessToken]);
 
   useEffect(() => {
     if (!socket) return;

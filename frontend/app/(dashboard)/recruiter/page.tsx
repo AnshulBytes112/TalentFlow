@@ -287,7 +287,11 @@ export default function RecruiterDashboardPage() {
                       <tr key={job._id} className="border-b border-border hover:bg-bg-secondary/50 transition-colors">
                         <td className="py-3 px-4">
                           <div>
-                            <h4 className="text-sm font-bold text-white">{job.title}</h4>
+                            <h4 className="text-sm font-bold text-white">
+                              <Link href={`/recruiter/jobs/${job._id}/applications`} className="hover:underline">
+                                {job.title}
+                              </Link>
+                            </h4>
                             <p className="text-xs text-text-tertiary">{job.type} • {job.workMode}</p>
                           </div>
                         </td>
@@ -297,7 +301,7 @@ export default function RecruiterDashboardPage() {
                           </Badge>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-sm text-text-primary">{job.applicationCount || 0}</span>
+                          <span className="text-sm text-text-primary">{job.applicantCount ?? job.applicationCount ?? 0}</span>
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-sm text-text-secondary">
@@ -306,7 +310,7 @@ export default function RecruiterDashboardPage() {
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-sm text-text-secondary">
-                            {job.deadline ? format(new Date(job.deadline), 'MMM d, yyyy') : 'No deadline'}
+                            { (job.expiryDate || job.deadline) ? format(new Date(job.expiryDate || job.deadline), 'MMM d, yyyy') : 'No deadline' }
                           </span>
                         </td>
                         <td className="py-3 px-4">
@@ -426,10 +430,12 @@ export default function RecruiterDashboardPage() {
                       />
                       <div>
                         <h4 className="text-sm font-bold text-white">
-                          {application.applicant.firstName} {application.applicant.lastName}
+                          <Link href={`/recruiter/pipeline?app=${application._id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+                            {application.applicant.firstName} {application.applicant.lastName}
+                          </Link>
                         </h4>
                         <p className="text-xs text-text-tertiary">
-                          Applied to {application.job.title} • {formatDistanceToNow(new Date(application.createdAt), { addSuffix: true })}
+                          Applied to <Link href={`/recruiter/jobs/${application.job._id}/applications`} onClick={(e) => e.stopPropagation()} className="hover:underline">{application.job.title}</Link> • {formatDistanceToNow(new Date(application.createdAt), { addSuffix: true })}
                         </p>
                       </div>
                     </div>

@@ -3,6 +3,8 @@ const http = require('http');
 const { spawn } = require('child_process');
 const axios = require('axios');
 const { chromium } = require('playwright');
+// Load environment variables (avoid hardcoding secrets in the script)
+require('dotenv').config();
 
 // ============================================================================
 // QA RUNNER - Autonomous end-to-end test suite
@@ -10,7 +12,8 @@ const { chromium } = require('playwright');
 
 const BACKEND_URL = 'http://localhost:5000';
 const FRONTEND_URL = 'http://localhost:3003';  // Frontend running on dynamic port
-const DB_URL = 'mongodb+srv://anshpclg4040:12345@cluster0.tftvvhr.mongodb.net/?appName=Cluster0';
+// Read DB URL from environment; do NOT hardcode credentials in QA runner.
+const DB_URL = process.env.MONGODB_URI || process.env.DB_URL || '[REDACTED_MONGODB_URI]';
 
 let testResults = [];
 let bugs = [];

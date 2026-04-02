@@ -53,6 +53,7 @@ interface JobFormData {
   salaryMax?: number;
   currency: string;
   deadline?: string;
+  isUnpaid?: boolean;
   status: 'draft' | 'active' | 'closed' | 'expired';
 }
 
@@ -70,6 +71,7 @@ const initialFormData: JobFormData = {
   salaryMin: undefined,
   salaryMax: undefined,
   currency: 'USD',
+  isUnpaid: false,
   deadline: '',
   status: 'draft'
 };
@@ -110,7 +112,8 @@ export default function JobEditPage() {
           salaryMin: job.salaryMin ?? job.salary?.min ?? undefined,
           salaryMax: job.salaryMax ?? job.salary?.max ?? undefined,
           currency: job.currency || (job.salary && job.salary.currency) || 'USD',
-          deadline: job.deadline ? format(new Date(job.deadline), 'yyyy-MM-dd') : (job.deadline || ''),
+          isUnpaid: !!job.isUnpaid,
+          deadline: job.expiryDate ? format(new Date(job.expiryDate), 'yyyy-MM-dd') : (job.deadline ? format(new Date(job.deadline), 'yyyy-MM-dd') : ''),
           status: job.status || 'draft'
         });
       } catch (error) {
@@ -136,8 +139,8 @@ export default function JobEditPage() {
         type: formData.type,
         jobType: formData.type,
         workMode: formData.workMode,
-        salaryMin: formData.salaryMin,
-        salaryMax: formData.salaryMax,
+        isUnpaid: !!formData.isUnpaid,
+        ...(formData.isUnpaid ? {} : { salaryMin: formData.salaryMin, salaryMax: formData.salaryMax }),
         deadline: formData.deadline || format(addDays(new Date(), 30), 'yyyy-MM-dd'),
         companyName: formData.companyName,
         category: formData.category,
@@ -321,13 +324,32 @@ export default function JobEditPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-bold text-white mb-2">Min Salary</label>
-                      <Input label="Min Salary" type="number" value={formData.salaryMin || ''} onChange={(e) => handleInputChange('salaryMin', e.target.value ? parseInt(e.target.value) : undefined)} className="bg-bg-secondary" />
+                    <div className="md:col-span-3">
+                      <label className="inline-flex items-center gap-2 text-sm text-white mb-2">
+                        <input
+                          type="checkbox"
+                          checked={!!formData.isUnpaid}
+                          onChange={(e) => handleInputChange('isUnpaid', e.target.checked)}
+                          className="form-checkbox h-4 w-4 text-accent-primary bg-bg-secondary border-border rounded"
+                        />
+                        <span>Unpaid (No salary specified)</span>
+                      </label>
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-white mb-2">Max Salary</label>
-                      <Input label="Max Salary" type="number" value={formData.salaryMax || ''} onChange={(e) => handleInputChange('salaryMax', e.target.value ? parseInt(e.target.value) : undefined)} className="bg-bg-secondary" />
+                      {!formData.isUnpaid && (
+                        <>
+                          <label className="block text-sm font-bold text-white mb-2">Min Salary</label>
+                          <Input label="Min Salary" type="number" value={formData.salaryMin || ''} onChange={(e) => handleInputChange('salaryMin', e.target.value ? parseInt(e.target.value) : undefined)} className="bg-bg-secondary" />
+                        </>
+                      )}
+                    </div>
+                    <div>
+                      {!formData.isUnpaid && (
+                        <>
+                          <label className="block text-sm font-bold text-white mb-2">Max Salary</label>
+                          <Input label="Max Salary" type="number" value={formData.salaryMax || ''} onChange={(e) => handleInputChange('salaryMax', e.target.value ? parseInt(e.target.value) : undefined)} className="bg-bg-secondary" />
+                        </>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-white mb-2">Currency</label>

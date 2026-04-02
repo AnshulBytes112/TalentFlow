@@ -16,8 +16,9 @@ export interface JobCardProps {
     company?: { name: string; logo?: { url: string } };
     location: string;
     type?: string;
-    workMode?: string;
-    salary?: { min?: number; max?: number; currency?: string };
+      workMode?: string;
+      isUnpaid?: boolean;
+      salary?: { min?: number; max?: number; currency?: string };
     skills: string[];
     expiryDate: string;
     postedBy?: { firstName: string; lastName: string; company?: string };
@@ -32,6 +33,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, hasApplied }) => {
   
   // Salary formatting
   const formattedSalary = useMemo(() => {
+    if (job.isUnpaid) return 'Unpaid';
     if (!job.salary) return null;
     const { min, max, currency = 'USD' } = job.salary;
     const symbol = currency === 'USD' ? '$' : currency;
@@ -42,19 +44,23 @@ const JobCard: React.FC<JobCardProps> = ({ job, hasApplied }) => {
     return null;
   }, [job.salary]);
 
-  // Deadline calculation
+  // Deadline calculation (fallback to legacy `deadline`)
   const { daysUntil, isUrgent, deadlineText } = useMemo(() => {
-    const expiry = new Date(job.expiryDate);
+    const dateStr = job.expiryDate || (job as any).deadline;
+    if (!dateStr) return { daysUntil: null as number | null, isUrgent: false, deadlineText: 'No deadline' };
+
+    const expiry = new Date(dateStr);
+    if (isNaN(expiry.getTime())) return { daysUntil: null as number | null, isUrgent: false, deadlineText: 'No deadline' };
+
     const days = differenceInDays(expiry, new Date());
-    
     if (days < 0) return { daysUntil: days, isUrgent: false, deadlineText: 'Expired' };
-    
+
     return {
       daysUntil: days,
       isUrgent: days <= 3,
       deadlineText: days === 0 ? 'Ends today' : `${days} days left`
     };
-  }, [job.expiryDate]);
+  }, [job.expiryDate, (job as any).deadline]);
 
   // Skill truncation
   const visibleSkills = job.skills.slice(0, 3);
@@ -116,7 +122,9 @@ const JobCard: React.FC<JobCardProps> = ({ job, hasApplied }) => {
         <div className="mt-8 pt-6 border-t border-border flex flex-col space-y-4">
           
           <div className="flex items-center justify-between">
-            {formattedSalary ? (
+            {job.isUnpaid ? (
+              <div className="text-sm font-medium text-text-primary font-bold">Unpaid</div>
+            ) : formattedSalary ? (
               <div className="flex items-center gap-1.5 font-bold text-text-primary">
                 <DollarSign size={16} className="text-text-tertiary" />
                 {formattedSalary}

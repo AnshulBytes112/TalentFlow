@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
@@ -297,6 +298,7 @@ function ApplicationCard({ application, onSelect }: { application: Application; 
 
 export default function RecruiterPipelinePage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
   const [applications, setApplications] = useState<Application[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [selectedJob, setSelectedJob] = useState<string>('all');
@@ -328,6 +330,19 @@ export default function RecruiterPipelinePage() {
 
       setApplications(normalizedApplications);
       setJobs(jobsRes.data.data);
+      const jobParam = searchParams?.get('job');
+      const appParam = searchParams?.get('app');
+
+      if (jobParam) {
+        setSelectedJob(jobParam);
+      }
+
+      if (appParam) {
+        const matched = normalizedApplications.find((a: any) => a._id === appParam);
+        if (matched) {
+          setSelectedApplication(matched);
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch pipeline data', error);
       toast.error('Failed to load pipeline data');

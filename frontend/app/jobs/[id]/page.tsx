@@ -61,6 +61,9 @@ export default function JobDetailsPage() {
     const _appliedStatus = job.userApplication || null;
 
     let salaryStr = null;
+    if (job.isUnpaid) {
+      salaryStr = 'Unpaid';
+    }
     if (job.salary) {
       const { min, max, currency = 'USD' } = job.salary;
       const symbol = currency === 'USD' ? '$' : currency;
@@ -69,12 +72,21 @@ export default function JobDetailsPage() {
       else if (max) salaryStr = `Up to ${symbol}${max.toLocaleString()}`;
     }
 
-    const expiry = new Date(job.expiryDate);
-    const days = differenceInDays(expiry, new Date());
-    let deadlineTxt = '';
-    if (days < 0) deadlineTxt = 'Expired';
-    else if (days === 0) deadlineTxt = 'Ends today';
-    else deadlineTxt = `${days} days left`;
+    const dateStr = job.expiryDate || job.deadline;
+    let days: number | null = null;
+    let deadlineTxt = 'No deadline';
+    let urgent = false;
+
+    if (dateStr) {
+      const expiry = new Date(dateStr);
+      if (!isNaN(expiry.getTime())) {
+        days = differenceInDays(expiry, new Date());
+        if (days < 0) deadlineTxt = 'Expired';
+        else if (days === 0) deadlineTxt = 'Ends today';
+        else deadlineTxt = `${days} days left`;
+        urgent = days > 0 && days <= 7;
+      }
+    }
 
     return {
       companyName: cName,
@@ -85,7 +97,7 @@ export default function JobDetailsPage() {
       appliedStage: _appliedStatus,
       formattedSalary: salaryStr,
       daysUntil: days,
-      isUrgent: days > 0 && days <= 7,
+      isUrgent: urgent,
       deadlineText: deadlineTxt
     };
   }, [job]);
@@ -132,7 +144,7 @@ export default function JobDetailsPage() {
                   <span className="font-bold text-accent-primary">{companyName}</span>
                   <span className="text-text-tertiary">•</span>
                   <span className="text-text-secondary">{format(new Date(job.createdAt), 'MMM dd, yyyy')}</span>
-                  {daysUntil >= 0 && (
+                  {deadlineText && (
                     <>
                       <span className="text-text-tertiary">•</span>
                       <span className={`font-bold ${isUrgent ? 'text-accent-danger' : 'text-text-tertiary'} flex items-center gap-1.5`}>

@@ -40,6 +40,7 @@ export default function JobsPage() {
   const [salaryRange, setSalaryRange] = useState<[number, number]>([0, 200000]);
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
+  const [filterUnpaid, setFilterUnpaid] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // Debounced Search Trigger
@@ -72,6 +73,7 @@ export default function JobsPage() {
       if (salaryRange[0] > 0) params.append('salaryMin', salaryRange[0].toString());
       if (salaryRange[1] < 200000) params.append('salaryMax', salaryRange[1].toString());
       if (skills.length > 0) params.append('skills', skills.join(','));
+      if (filterUnpaid) params.append('unpaid', 'true');
 
       const response = await api.get('/api/jobs', { params });
       
@@ -91,12 +93,13 @@ export default function JobsPage() {
       setIsLoading(false);
       setIsFetchingMore(false);
     }
-  }, [debouncedSearch, debouncedLocation, selectedTypes, selectedModes, salaryRange, skills, page]);
+  }, [debouncedSearch, debouncedLocation, selectedTypes, selectedModes, salaryRange, skills, page, filterUnpaid]);
+ 
 
   // Initial Fetch & Filter Changes
   useEffect(() => {
     fetchJobs(false);
-  }, [debouncedSearch, debouncedLocation, selectedTypes, selectedModes, selectedCategory, selectedExperience, salaryRange, skills]); // eslint-disable-line
+  }, [debouncedSearch, debouncedLocation, selectedTypes, selectedModes, selectedCategory, selectedExperience, salaryRange, skills, filterUnpaid]); // eslint-disable-line
 
   const handleAddSkill = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && skillInput.trim() && !skills.includes(skillInput.trim())) {
@@ -266,6 +269,16 @@ export default function JobsPage() {
                             <span className="text-sm font-medium text-text-secondary group-hover:text-white transition-colors capitalize">{mode}</span>
                           </label>
                         ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Other</h3>
+                      <div className="flex flex-col gap-3">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input type="checkbox" className="form-checkbox h-4 w-4 text-accent-primary bg-bg-secondary border-border rounded" checked={filterUnpaid} onChange={(e) => setFilterUnpaid(e.target.checked)} />
+                          <span className="text-sm font-medium text-text-secondary group-hover:text-white transition-colors">Show unpaid only</span>
+                        </label>
                       </div>
                     </div>
 

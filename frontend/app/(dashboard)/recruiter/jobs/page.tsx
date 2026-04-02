@@ -98,7 +98,9 @@ export default function RecruiterJobsPage() {
                       <tr key={job._id} className="border-b border-border hover:bg-bg-secondary/40 transition-colors">
                         <td className="py-3 px-4">
                           <div>
-                            <p className="font-bold text-white">{job.title}</p>
+                            <p className="font-bold text-white">
+                              <Link href={`/recruiter/jobs/${job._id}/applications`} className="hover:underline">{job.title}</Link>
+                            </p>
                             <p className="text-xs text-text-tertiary">{job.location || 'Location not set'}</p>
                           </div>
                         </td>
@@ -107,7 +109,7 @@ export default function RecruiterJobsPage() {
                             {JOB_STATUS_LABEL[job.status] || job.status || 'Unknown'}
                           </Badge>
                         </td>
-                        <td className="py-3 px-4 text-text-primary">{job.applicationCount || 0}</td>
+                        <td className="py-3 px-4 text-text-primary">{job.applicantCount ?? job.applicationCount ?? 0}</td>
                         <td className="py-3 px-4 text-text-secondary text-sm">
                           {job.createdAt ? format(new Date(job.createdAt), 'MMM d, yyyy') : 'N/A'}
                         </td>

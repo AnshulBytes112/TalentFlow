@@ -4,7 +4,7 @@ const Notification = require('../models/Notification');
 const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
-const { JOB_STATUS, JOB_TYPES, JOB_CATEGORIES, EXPERIENCE_LEVELS } = require('../utils/constants');
+const { JOB_STATUS, JOB_TYPES, JOB_CATEGORIES, EXPERIENCE_LEVELS, WORK_MODES } = require('../utils/constants');
 const emailService = require('../services/emailService');
 const { emitToUser } = require('../services/socketService');
 const { notifyJobClosed, notifyJobUpdated } = require('../services/notificationService');
@@ -58,7 +58,9 @@ const createJob = asyncHandler(async (req, res) => {
     companyName,
     category,
     experience,
-    status
+    status,
+    workMode,
+    isUnpaid
   } = req.body;
 
   // Validate required fields
@@ -76,6 +78,11 @@ const createJob = asyncHandler(async (req, res) => {
   // Validate job type
   if (!JOB_TYPES.includes(jobType)) {
     throw ApiError.badRequest(`Invalid job type. Must be one of: ${JOB_TYPES.join(', ')}`);
+  }
+
+  // Validate work mode if provided
+  if (workMode && !WORK_MODES.includes(workMode)) {
+    throw ApiError.badRequest(`Invalid work mode. Must be one of: ${WORK_MODES.join(', ')}`);
   }
 
   // Validate category
@@ -114,8 +121,11 @@ const createJob = asyncHandler(async (req, res) => {
     status: status === JOB_STATUS.ACTIVE ? JOB_STATUS.ACTIVE : JOB_STATUS.DRAFT
   };
 
-  // Add optional fields
-  if (salaryMin || salaryMax) {
+  if (workMode) jobData.workMode = workMode;
+  if (isUnpaid) jobData.isUnpaid = true;
+
+  // Add optional fields (skip salary if job marked unpaid)
+  if (!isUnpaid && (salaryMin || salaryMax)) {
     jobData.salary = {};
     if (salaryMin) jobData.salary.min = salaryMin;
     if (salaryMax) jobData.salary.max = salaryMax;
@@ -186,7 +196,7 @@ const publishJob = asyncHandler(async (req, res) => {
   }
 
   // Check all required fields are filled (use correct schema field names)
-  const requiredFields = ['title', 'description', 'requirements', 'location', 'type', 'expiryDate'];
+  const requiredFields = ['title', 'description', 'requirements', 'location', 'type', 'workMode', 'expiryDate'];
   const missingFields = requiredFields.filter(field => !job[field]);
   if (missingFields.length > 0) {
     throw ApiError.badRequest(`Cannot publish job. Missing required fields: ${missingFields.join(', ')}`);
@@ -314,6 +324,22 @@ const updateJob = asyncHandler(async (req, res) => {
     mappedData.salary = salary;
   } else if (updateData.salary !== undefined) {
     mappedData.salary = updateData.salary;
+  }
+
+  // Handle workMode
+  if (updateData.workMode !== undefined) {
+    if (updateData.workMode && !WORK_MODES.includes(updateData.workMode)) {
+      throw ApiError.badRequest(`Invalid work mode. Must be one of: ${WORK_MODES.join(', ')}`);
+    }
+    mappedData.workMode = updateData.workMode;
+  }
+
+  // Handle unpaid flag
+  if (updateData.isUnpaid !== undefined) {
+    mappedData.isUnpaid = !!updateData.isUnpaid;
+    if (mappedData.isUnpaid) {
+      mappedData.salary = undefined;
+    }
   }
 
   // Handle company info
@@ -509,6 +535,12 @@ const getJobs = asyncHandler(async (req, res) => {
   // Filter by work mode
   if (workMode) {
     query.workMode = workMode;
+  }
+
+  // Filter by unpaid flag
+  if (req.query.unpaid !== undefined) {
+    const unpaidFlag = req.query.unpaid === 'true' || req.query.unpaid === '1' || req.query.unpaid === true;
+    query.isUnpaid = unpaidFlag;
   }
 
   // Filter by skills (array intersection)
