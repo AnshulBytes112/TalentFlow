@@ -12,39 +12,57 @@ import {
   Briefcase, 
   Users, 
   CheckCircle2, 
-  XOctagon,
-  ArrowUpRight,
-  ChevronDown,
-  ChevronUp,
   AlertCircle,
-  Clock,
-  MapPin,
-  Building
+  ArrowUpRight
 } from 'lucide-react';
-import axios from 'axios';
-import { format } from 'date-fns';
+import api from '@/lib/axios';
 import { toast } from 'react-hot-toast';
 
 const STAGES = ['applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'];
-const TAB_STAGES = ['all', 'applied', 'screening', 'interview', 'offer', 'rejected'];
 
 export default function JobseekerDashboardPage() {
   const { data: session } = useSession();
   const [applications, setApplications] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const formatRelativeTime = (isoDate?: string) => {
+    if (!isoDate) return 'Now';
+    const then = new Date(isoDate).getTime();
+    const now = Date.now();
+    const diffMs = Math.max(0, now - then);
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
 
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true);
-      const [appRes, meRes] = await Promise.all([
-        axios.get('/api/applications/my?limit=50'),
-        axios.get('/api/auth/me')
+      const getProfile = async () => {
+        try {
+          return await api.get('/api/users/profile');
+        } catch (error: any) {
+          if (error?.response?.status === 404) {
+            return api.get('/api/auth/me');
+          }
+          throw error;
+        }
+      };
+
+      const [appRes, meRes, notifRes] = await Promise.all([
+        api.get('/api/applications/my?limit=50'),
+        getProfile(),
+        api.get('/api/notifications?limit=5&page=1')
       ]);
       setApplications(appRes.data.data);
       setProfile(meRes.data.data.profile);
+      setNotifications(notifRes?.data?.data?.notifications || []);
     } catch (error) {
       console.error('Failed to fetch dashboard data', error);
       toast.error('Failed to load dashboard data');
@@ -56,17 +74,6 @@ export default function JobseekerDashboardPage() {
   useEffect(() => {
     if (session) fetchDashboardData();
   }, [session]);
-
-  const handleWithdraw = async (appId: string) => {
-    try {
-      if (!confirm('Are you sure you want to withdraw this application? This action cannot be undone.')) return;
-      await axios.patch(`/api/applications/${appId}/withdraw`);
-      toast.success('Application withdrawn');
-      fetchDashboardData();
-    } catch (error) {
-      toast.error('Failed to withdraw application');
-    }
-  };
 
   const profileStatus = useMemo(() => {
     if (!profile) return { isComplete: true, percent: 100, missing: [] }; // Hide skeleton while loading
@@ -99,11 +106,6 @@ export default function JobseekerDashboardPage() {
     };
   }, [applications]);
 
-  const filteredApplications = useMemo(() => {
-    if (activeTab === 'all') return applications;
-    return applications.filter(a => a.stage === activeTab);
-  }, [applications, activeTab]);
-
   const containerAnimations = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -112,34 +114,6 @@ export default function JobseekerDashboardPage() {
   const itemAnimations = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 }
-  };
-
-  const renderStepper = (currentStage: string) => {
-    const progression = ['applied', 'screening', 'interview', 'offer'];
-    const safeStage = currentStage === 'rejected' || currentStage === 'withdrawn' ? 'applied' : currentStage; // keep it at start or find match
-    const currentIndex = progression.indexOf(safeStage);
-    
-    return (
-      <div className="flex items-center w-full max-w-sm mt-4">
-        {progression.map((step, idx) => {
-          const isActive = idx <= currentIndex;
-          const isFailed = currentStage === 'rejected' && step === 'applied'; // Minimal indication
-          return (
-            <div key={step} className="flex items-center flex-1 last:flex-none">
-               <div className="flex flex-col items-center gap-1.5 relative z-10">
-                 <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-accent-primary shadow-[0_0_10px_#6EE7B7]' : currentStage === 'rejected' ? 'bg-accent-danger' : 'bg-border'}`} />
-                 <span className={`absolute top-4 text-[9px] uppercase font-bold tracking-wider ${isActive ? 'text-accent-primary' : 'text-text-tertiary'}`}>
-                   {step}
-                 </span>
-               </div>
-               {idx < progression.length - 1 && (
-                 <div className={`h-[2px] flex-1 mx-2 rounded-full ${idx < currentIndex ? 'bg-accent-primary' : 'bg-border'}`} />
-               )}
-            </div>
-          )
-        })}
-      </div>
-    );
   };
 
   return (
@@ -235,145 +209,43 @@ export default function JobseekerDashboardPage() {
           </motion.div>
         )}
 
-        {/* Main Content Layout */}
-        <div className="grid lg:grid-cols-3 gap-8">
-           
-           {/* My Applications Section */}
-           <div className="lg:col-span-2 space-y-6">
-             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-               <h2 className="text-xl font-display font-black text-white tracking-tight uppercase">My Applications</h2>
-             
-             {/* Tabs */}
-             <div className="flex overflow-x-auto pb-2 sm:pb-0 hide-scrollbar gap-2">
-               {TAB_STAGES.map(tab => (
-                 <button
-                   key={tab}
-                   onClick={() => setActiveTab(tab)}
-                   className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
-                     activeTab === tab 
-                     ? 'bg-text-primary text-bg-primary' 
-                     : 'bg-elevated/50 text-text-tertiary hover:text-white border border-border'
-                   }`}
-                 >
-                   {tab}
-                 </button>
-               ))}
-             </div>
-           </div>
+        {/* Quick Actions */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <Link href="/jobseeker/applications">
+            <Card className="hover:border-border/80 transition-all cursor-pointer group">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 rounded-xl bg-elevated text-text-primary">
+                    <Briefcase size={20} />
+                  </div>
+                  <ArrowUpRight size={16} className="text-text-tertiary group-hover:text-accent-primary transition-colors" />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl font-display font-black text-white">{stats.total}</div>
+                  <div className="text-sm font-bold text-text-secondary">Total Applications</div>
+                  <div className="text-xs text-text-tertiary mt-2">View and manage all your job applications</div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
 
-           {/* Applications List */}
-           {isLoading ? (
-             <div className="space-y-4">
-                {[1,2,3].map(i => <div key={i} className="h-32 rounded-2xl bg-bg-card border border-border animate-pulse" />)}
-             </div>
-           ) : filteredApplications.length === 0 ? (
-             <div className="py-24 text-center border border-dashed border-border rounded-3xl bg-bg-card/30 flex flex-col items-center">
-                <Briefcase size={40} className="text-text-tertiary mb-4 opacity-50" />
-                <h3 className="text-lg font-bold text-white tracking-tight mb-2">No applications found</h3>
-                <p className="text-sm text-text-secondary">You haven't reached this stage for any jobs yet.</p>
-             </div>
-           ) : (
-             <motion.div variants={containerAnimations} initial="hidden" animate="show" className="space-y-4">
-               {filteredApplications.map(app => {
-                 const isExpanded = expandedId === app._id;
-                 const job = app.job;
-                 const companyName = job.company?.name || job.postedBy?.company || 'Confidential';
-
-                 return (
-                   <motion.div key={app._id} variants={itemAnimations}>
-                     <Card className="overflow-hidden border-border transition-all hover:border-border/80">
-                       <div 
-                         className="p-6 cursor-pointer flex flex-col lg:flex-row gap-6 lg:items-center justify-between bg-bg-card"
-                         onClick={() => setExpandedId(isExpanded ? null : app._id)}
-                       >
-                         {/* Left section: Job info */}
-                         <div className="flexItems-start gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-bg-secondary flex items-center justify-center border border-border flex-shrink-0">
-                               <Building size={20} className="text-text-tertiary" />
-                            </div>
-                            <div className="space-y-2 mt-1">
-                               <div className="flex gap-3 items-center">
-                                  <h3 className="text-lg font-black text-white leading-tight">{job.title}</h3>
-                                  <Badge variant={app.stage} className="uppercase px-2 py-0.5 text-[9px]">{app.stage}</Badge>
-                               </div>
-                               <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-text-tertiary">
-                                  <span className="text-text-secondary">{companyName}</span>
-                                  <span className="w-1 h-1 rounded-full bg-border" />
-                                  <span className="flex items-center gap-1"><MapPin size={12}/> {job.location}</span>
-                                  <span className="w-1 h-1 rounded-full bg-border" />
-                                  <span>Applied {format(new Date(app.createdAt), 'MMM d, yyyy')}</span>
-                               </div>
-                            </div>
-                         </div>
-
-                         {/* Right section: Stepper & Expand */}
-                         <div className="flex flex-col sm:flex-row lg:items-center gap-6 lg:gap-12 w-full lg:w-auto mt-4 lg:mt-0 pt-4 lg:pt-0 border-t lg:border-none border-border">
-                            <div className="hidden sm:block lg:w-48 xl:w-64">
-                               {renderStepper(app.stage)}
-                            </div>
-                            
-                            <div className="flex items-center justify-between sm:justify-end gap-4 sm:w-auto w-full">
-                               {['rejected', 'withdrawn', 'offer'].includes(app.stage) ? null : (
-                                  <Button 
-                                    size="sm" 
-                                    variant="ghost" 
-                                    onClick={(e) => { e.stopPropagation(); handleWithdraw(app._id); }}
-                                    className="text-text-tertiary hover:text-accent-danger hover:bg-accent-danger/10 px-0 sm:px-3 text-xs"
-                                  >
-                                     Withdraw
-                                  </Button>
-                               )}
-                               <button className="p-2 rounded-full hover:bg-bg-secondary text-text-secondary transition-colors">
-                                  {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                               </button>
-                            </div>
-                         </div>
-                       </div>
-
-                       {/* Expanded Stage History */}
-                       <AnimatePresence>
-                         {isExpanded && (
-                           <motion.div
-                             initial={{ height: 0, opacity: 0 }}
-                             animate={{ height: 'auto', opacity: 1 }}
-                             exit={{ height: 0, opacity: 0 }}
-                             className="border-t border-border bg-bg-secondary/30"
-                           >
-                             <div className="p-6 pl-8 lg:pl-24 space-y-6">
-                                <h4 className="text-xs font-black uppercase tracking-widest text-text-secondary">Application Timeline</h4>
-                                <div className="space-y-6 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-border before:to-transparent">
-                                   {[...(app.stageHistory || [])].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((history: any, idx: number) => (
-                                      <div key={idx} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                                         <div className="flex items-center justify-center w-5 h-5 rounded-full border border-bg-card bg-accent-primary text-bg-primary shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 ml-[-9px] md:ml-0 z-10">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-current" />
-                                         </div>
-                                         <div className="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] ml-4 md:ml-0 bg-bg-card p-4 rounded-xl border border-border">
-                                            <div className="flex items-center justify-between mb-1">
-                                               <Badge variant={history.stage} className="uppercase text-[9px] px-2 py-0.5">{history.stage}</Badge>
-                                               <span className="text-xs font-bold text-text-tertiary">{format(new Date(history.date), 'MMM d, h:mm a')}</span>
-                                            </div>
-                                            <p className="text-sm text-text-secondary mt-2">{history.note}</p>
-                                         </div>
-                                      </div>
-                                   ))}
-                                </div>
-                                <div className="flex justify-end pt-4">
-                                   <Link href={`/jobs/${job._id}`}>
-                                      <Button variant="outline" size="sm" className="text-xs gap-2 border-border text-white hover:border-accent-primary">
-                                         View Job Listing <ArrowUpRight size={14} />
-                                      </Button>
-                                   </Link>
-                                </div>
-                             </div>
-                           </motion.div>
-                         )}
-                       </AnimatePresence>
-                     </Card>
-                   </motion.div>
-                 );
-               })}
-             </motion.div>
-           )}
+          <Link href="/jobs">
+            <Card className="hover:border-border/80 transition-all cursor-pointer group">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 rounded-xl bg-accent-primary/10 text-accent-primary">
+                    <Briefcase size={20} />
+                  </div>
+                  <ArrowUpRight size={16} className="text-text-tertiary group-hover:text-accent-primary transition-colors" />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl font-display font-black text-white">Browse</div>
+                  <div className="text-sm font-bold text-text-secondary">Find New Opportunities</div>
+                  <div className="text-xs text-text-tertiary mt-2">Discover and apply to your next role</div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
         
         {/* Recent Notifications Sidebar */}
@@ -384,20 +256,21 @@ export default function JobseekerDashboardPage() {
                  <Link href="/notifications" className="text-xs font-bold text-accent-primary hover:underline">View All</Link>
               </CardHeader>
               <CardContent className="space-y-5 pt-4">
-                 {[
-                    { title: 'New Message from Acme Corp', time: '10m ago', unread: true },
-                    { title: 'Your application was viewed by Google HR', time: '2h ago', unread: true },
-                    { title: 'Interview prep guide is ready: Senior Dev', time: '1d ago', unread: false },
-                    { title: 'Profile matched with 5 new luxury roles', time: '2d ago', unread: false },
-                    { title: 'Weekly job digest: New York City', time: '3d ago', unread: false },
-                 ].map((notify, idx) => (
-                    <div key={idx} className="flex gap-3 group cursor-pointer hover:bg-elevated/40 p-2 -mx-2 rounded-xl transition-all">
+                  {notifications.length === 0 && (
+                    <p className="text-sm text-text-tertiary">No notifications yet.</p>
+                  )}
+                  {notifications.map((notify, idx) => (
+                    <div key={notify._id || idx} className="flex gap-3 group cursor-pointer hover:bg-elevated/40 p-2 -mx-2 rounded-xl transition-all">
                        <div className="mt-1.5 flex-shrink-0">
-                          <div className={`w-2 h-2 rounded-full ${notify.unread ? 'bg-accent-primary shadow-[0_0_8px_#6EE7B7]' : 'bg-text-tertiary'}`} />
+                        <div className={`w-2 h-2 rounded-full ${!notify.read ? 'bg-accent-primary shadow-[0_0_8px_#6EE7B7]' : 'bg-text-tertiary'}`} />
                        </div>
                        <div className="pr-2">
-                          <p className={`text-sm ${notify.unread ? 'text-white font-bold' : 'text-text-secondary font-medium'} group-hover:text-accent-primary transition-colors leading-tight`}>{notify.title}</p>
-                          <p className="text-[10px] text-text-tertiary mt-1.5 uppercase font-bold tracking-widest">{notify.time}</p>
+                        <p className={`text-sm ${!notify.read ? 'text-white font-bold' : 'text-text-secondary font-medium'} group-hover:text-accent-primary transition-colors leading-tight`}>
+                         {notify.title}
+                        </p>
+                        <p className="text-[10px] text-text-tertiary mt-1.5 uppercase font-bold tracking-widest">
+                         {formatRelativeTime(notify.createdAt)}
+                        </p>
                        </div>
                     </div>
                  ))}

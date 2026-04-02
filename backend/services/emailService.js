@@ -1,18 +1,24 @@
 const nodemailer = require('nodemailer');
 
+const SMTP_HOST = process.env.SMTP_HOST || process.env.EMAIL_HOST;
+const SMTP_PORT = process.env.SMTP_PORT || process.env.EMAIL_PORT;
+const SMTP_SECURE = process.env.SMTP_SECURE || process.env.EMAIL_SECURE;
+const SMTP_USER = process.env.SMTP_USER || process.env.EMAIL_USER;
+const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+
 // Create transporter
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: process.env.SMTP_SECURE === 'true',
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  secure: SMTP_SECURE === 'true',
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
+    user: SMTP_USER,
+    pass: SMTP_PASS
   }
 });
 
 const APP_NAME = 'JobMatrix';
-const FROM_EMAIL = `${APP_NAME} <${process.env.SMTP_USER}>`;
+const FROM_EMAIL = `${APP_NAME} <${SMTP_USER}>`;
 
 /**
  * Send Welcome Email
@@ -260,6 +266,34 @@ const sendPendingApplicationsReminder = async (recruiter, count) => {
   return await transporter.sendMail(mailOptions);
 };
 
+/**
+ * Send Job Updated Notification to Applicant
+ */
+const sendJobUpdatedEmail = async (applicant, job, updatedFields = []) => {
+  const fieldsHtml = updatedFields.length > 0
+    ? `<p><strong>What changed:</strong> ${updatedFields.join(', ')}</p>`
+    : '';
+
+  const mailOptions = {
+    from: FROM_EMAIL,
+    to: applicant.email,
+    subject: `Job Update: ${job.title}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;">
+        <h2 style="color: #2b6cb0;">A job you applied to has been updated</h2>
+        <p>Hi ${applicant.firstName}, the recruiter has posted updates for <strong>${job.title}</strong>.</p>
+        ${fieldsHtml}
+        <p>Please review the latest details to ensure the role still matches your preferences.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.FRONTEND_URL}/jobs/${job._id}" style="background-color: #2b6cb0; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Updated Job</a>
+        </div>
+      </div>
+    `
+  };
+
+  return await transporter.sendMail(mailOptions);
+};
+
 module.exports = {
   sendWelcomeEmail,
   sendEmailVerification,
@@ -269,5 +303,6 @@ module.exports = {
   sendOfferEmail,
   sendRejectionEmail,
   sendJobExpiryReminder,
-  sendPendingApplicationsReminder
+  sendPendingApplicationsReminder,
+  sendJobUpdatedEmail
 };

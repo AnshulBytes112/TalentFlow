@@ -1,4 +1,4 @@
-const { ApiError } = require('../utils/ApiError');
+const ApiError = require('../utils/ApiError');
 const { ROLES } = require('../utils/constants');
 
 /**

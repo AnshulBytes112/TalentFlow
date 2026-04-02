@@ -21,18 +21,13 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     return (
       <motion.div
         ref={ref}
-        whileHover={noHover ? {} : { 
-          y: -4,
-          borderColor: 'rgba(110, 231, 183, 0.3)',
-          boxShadow: '0 0 20px rgba(110, 231, 183, 0.1)',
-        }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
         className={cn(
           'rounded-2xl border p-1 transition-colors',
           variants[variant],
           className
         )}
-        {...props}
+        {...(props as any)}
       >
         <div className="h-full w-full rounded-[0.85rem] overflow-hidden">
           {children}

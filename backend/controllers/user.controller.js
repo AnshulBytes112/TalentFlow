@@ -10,6 +10,23 @@ const emailService = require('../services/emailService');
 const { ROLES } = require('../utils/constants');
 const { createNotification } = require('../services/notificationService');
 const { emitToUser, disconnectUser } = require('../services/socketService');
+const path = require('path');
+
+const isValidCloudinaryValue = (value) => {
+    if (!value) return false;
+    const normalized = String(value).trim().toLowerCase();
+    return !normalized.startsWith('your_') && !normalized.includes('placeholder');
+};
+
+const cloudinaryConfigured =
+    isValidCloudinaryValue(process.env.CLOUDINARY_CLOUD_NAME) &&
+    isValidCloudinaryValue(process.env.CLOUDINARY_API_KEY) &&
+    isValidCloudinaryValue(process.env.CLOUDINARY_API_SECRET);
+
+const buildLocalUploadUrl = (req, filePath) => {
+    const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+    return `${backendUrl}/uploads/${path.basename(filePath)}`;
+};
 
 /**
  * @swagger
@@ -41,7 +58,7 @@ const updateProfile = asyncHandler(async (req, res) => {
 
     if (role === ROLES.JOBSEEKER) {
         // Jobseeker: update bio, phone, location, skills, experience
-        const allowedFields = ['bio', 'phone', 'location', 'skills', 'experience', 'education', 'socialLinks'];
+        const allowedFields = ['bio', 'phone', 'location', 'skills', 'experience', 'education', 'socialLinks', 'resumeUrl'];
         allowedFields.forEach(field => {
             if (updateData[field] !== undefined) {
                 profileUpdate[`profile.${field}`] = updateData[field];
@@ -101,8 +118,13 @@ const uploadResume = asyncHandler(async (req, res) => {
     }
 
     // Delete previous resume from Cloudinary if exists
-    if (req.user.profile.resumePublicId) {
-        await deleteFromCloudinary(req.user.profile.resumePublicId);
+    if (req.user.profile.resumePublicId && cloudinaryConfigured) {
+        try {
+            await deleteFromCloudinary(req.user.profile.resumePublicId);
+        } catch (error) {
+            // Do not block new upload when old asset cleanup fails.
+            console.warn('Failed to delete old resume from Cloudinary:', error.message);
+        }
     }
 
     // The file is already uploaded to Cloudinary by multer-storage-cloudinary if configured in routes
@@ -114,9 +136,15 @@ const uploadResume = asyncHandler(async (req, res) => {
             secure_url: req.file.path,
             public_id: req.file.filename
         };
-    } else {
-        // Manual upload if needed (though usually multer handles it)
+    } else if (cloudinaryConfigured) {
+        // Manual cloud upload if needed
         result = await uploadToCloudinary(req.file.path, 'resumes');
+    } else {
+        // Local disk fallback for development
+        result = {
+            secure_url: buildLocalUploadUrl(req, req.file.path),
+            public_id: null
+        };
     }
 
     const user = await User.findByIdAndUpdate(
@@ -124,7 +152,7 @@ const uploadResume = asyncHandler(async (req, res) => {
         {
             $set: {
                 'profile.resumeUrl': result.secure_url,
-                'profile.resumePublicId': result.public_id
+                'profile.resumePublicId': result.public_id || null
             }
         },
         { new: true }
@@ -158,8 +186,13 @@ const uploadAvatar = asyncHandler(async (req, res) => {
     }
 
     // Delete old avatar if exists
-    if (req.user.profile.avatarPublicId) {
-        await deleteFromCloudinary(req.user.profile.avatarPublicId);
+    if (req.user.profile.avatarPublicId && cloudinaryConfigured) {
+        try {
+            await deleteFromCloudinary(req.user.profile.avatarPublicId);
+        } catch (error) {
+            // Do not block new upload when old asset cleanup fails.
+            console.warn('Failed to delete old avatar from Cloudinary:', error.message);
+        }
     }
 
     let result;
@@ -168,8 +201,13 @@ const uploadAvatar = asyncHandler(async (req, res) => {
             secure_url: req.file.path,
             public_id: req.file.filename
         };
-    } else {
+    } else if (cloudinaryConfigured) {
         result = await uploadToCloudinary(req.file.path, 'avatars');
+    } else {
+        result = {
+            secure_url: buildLocalUploadUrl(req, req.file.path),
+            public_id: null
+        };
     }
 
     const user = await User.findByIdAndUpdate(
@@ -177,7 +215,7 @@ const uploadAvatar = asyncHandler(async (req, res) => {
         {
             $set: {
                 'profile.avatarUrl': result.secure_url,
-                'profile.avatarPublicId': result.public_id
+                'profile.avatarPublicId': result.public_id || null
             }
         },
         { new: true }

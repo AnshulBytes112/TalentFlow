@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import axios from 'axios';
+import api from '@/lib/axios';
 import ReactMarkdown from 'react-markdown';
 import { format, differenceInDays } from 'date-fns';
 import { useSession } from 'next-auth/react';
@@ -31,7 +31,7 @@ export default function JobDetailsPage() {
   // Fetch job details
   const fetchJob = async () => {
     try {
-      const response = await axios.get(`/api/jobs/${id}`);
+      const response = await api.get(`/api/jobs/${id}`);
       setJob(response.data.data);
     } catch (error: any) {
       toast.error('Failed to load job details');
@@ -150,7 +150,7 @@ export default function JobDetailsPage() {
                   <MapPin size={16} className="text-text-tertiary" /> {job.location}
                 </Badge>
                 <Badge variant="ghost" className="bg-bg-secondary text-text-primary border-none px-3 py-1.5 font-bold flex items-center gap-2 capitalize">
-                  <Briefcase size={16} className="text-text-tertiary" /> {job.type.replace('-', ' ')}
+                  <Briefcase size={16} className="text-text-tertiary" /> {job.type?.replace('-', ' ') || 'N/A'}
                 </Badge>
                 {(job.workMode || job.type === 'remote') && (
                   <Badge variant="ghost" className="bg-accent-secondary/10 text-accent-secondary border-none px-3 py-1.5 font-bold flex items-center gap-2 uppercase tracking-widest text-[10px]">
@@ -245,7 +245,7 @@ export default function JobDetailsPage() {
                             {appliedStage}
                          </Badge>
                       </div>
-                      <Link href="/dashboard" className="block w-full">
+                      <Link href="/jobseeker/applications" className="block w-full">
                          <Button variant="outline" className="w-full font-bold">View Application</Button>
                       </Link>
                    </div>

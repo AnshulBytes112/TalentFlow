@@ -7,16 +7,17 @@ const ROLES = {
 
 // Valid stage transitions for applications
 const VALID_STAGE_TRANSITIONS = {
-  applied: ['screening', 'rejected'],
-  screening: ['interview', 'rejected'],
-  interview: ['offer', 'rejected'],
-  offer: ['rejected'],
-  rejected: [],
+  applied: ['screening', 'rejected', 'withdrawn'],
+  screening: ['interview', 'technical', 'rejected', 'withdrawn'],
+  interview: ['technical', 'offer', 'rejected', 'withdrawn'],
+  technical: ['offer', 'rejected', 'withdrawn'],
+  offer: ['rejected', 'withdrawn'],
+  rejected: ['screening'],
   withdrawn: []
 };
 
 // Application stages
-const APPLICATION_STAGES = ['applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'];
+const APPLICATION_STAGES = ['applied', 'screening', 'interview', 'technical', 'offer', 'rejected', 'withdrawn'];
 
 // JWT settings
 const JWT_ACCESS_EXPIRY = '15m';

@@ -86,12 +86,34 @@ exports.getRecruiterAnalytics = asyncHandler(async (req, res) => {
     withdrawn: 0
   };
   const applicationsByStage = { ...defaultStages, ...Object.fromEntries(appData.byStage.map(s => [s._id, s.count])) };
+  const applicationsByStageList = Object.entries(applicationsByStage).map(([stage, count]) => ({
+    stage,
+    count
+  }));
 
   // 3. Top 5 Jobs by Applicant Count
   const topJobs = await Job.find({ postedBy: recruiterId })
     .sort({ applicationCount: -1 })
     .limit(5)
     .select('title applicationCount viewCount status');
+
+  const activeJobViews = await Job.aggregate([
+    { $match: { postedBy: recruiterId, status: 'active' } },
+    {
+      $group: {
+        _id: null,
+        totalViews: { $sum: { $ifNull: ['$viewCount', 0] } }
+      }
+    }
+  ]);
+
+  const skillsDemandAgg = await Job.aggregate([
+    { $match: { postedBy: recruiterId } },
+    { $unwind: '$skills' },
+    { $group: { _id: '$skills', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 10 }
+  ]);
 
   // 4. Avg Time to Hire (Applied to Offer)
   const timeToHire = await Application.aggregate([
@@ -151,9 +173,23 @@ exports.getRecruiterAnalytics = asyncHandler(async (req, res) => {
       closedJobs: stats.closedJobs,
       expiredJobs: stats.expiredJobs,
       totalApplicationsReceived: totalApps,
-      applicationsByStage,
+      totalApplications: totalApps,
+      pendingReview: applicationsByStage.applied + applicationsByStage.screening,
+      offersExtended: applicationsByStage.offer,
+      activeJobViews: activeJobViews[0]?.totalViews || 0,
+      applicationsByStageMap: applicationsByStage,
+      applicationsByStageList,
+      applicationsByStage: applicationsByStageList,
       applicationsOverTime: appData.overTime,
-      topJobs,
+      topJobs: topJobs.map((job) => ({
+        title: job.title,
+        count: job.applicationCount || 0,
+        status: job.status
+      })),
+      skillsDemand: skillsDemandAgg.map((skill) => ({
+        skill: skill._id,
+        count: skill.count
+      })),
       avgTimeToHire: avgTimeDays,
       conversionRate: totalApps > 0 ? ((totalOffers / totalApps) * 100).toFixed(2) : 0
     }

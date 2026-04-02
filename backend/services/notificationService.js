@@ -119,11 +119,35 @@ const notifyJobClosed = async (application, job) => {
   });
 };
 
+/**
+ * Notify applicant that a job has been updated
+ */
+const notifyJobUpdated = async (application, job, updatedFields = []) => {
+  const fieldText = updatedFields.length > 0
+    ? ` Updated fields: ${updatedFields.join(', ')}.`
+    : '';
+
+  return await createNotification({
+    recipient: application.applicant,
+    type: 'application_status_update',
+    title: 'Job Post Updated',
+    message: `The job "${job.title}" you applied for has been updated.${fieldText}`,
+    data: {
+      jobId: job._id,
+      applicationId: application._id,
+      url: `/jobs/${job._id}`,
+      actionText: 'View Job Updates'
+    },
+    priority: 'medium'
+  });
+};
+
 module.exports = {
   createNotification,
   notifyStageChange,
   notifyNewApplication,
   notifyJobExpired,
   notifyWithdrawal,
-  notifyJobClosed
+  notifyJobClosed,
+  notifyJobUpdated
 };

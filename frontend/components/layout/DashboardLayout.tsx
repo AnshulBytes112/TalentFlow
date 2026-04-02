@@ -38,17 +38,18 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
   const navItems: Record<string, NavItem[]> = {
     jobseeker: [
-      { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Overview', href: '/jobseeker', icon: LayoutDashboard },
       { label: 'Browse Jobs', href: '/jobs', icon: Search },
-      { label: 'My Applications', href: '/dashboard/applications', icon: FileText },
-      { label: 'Profile', href: '/dashboard/profile', icon: User },
+      { label: 'My Applications', href: '/jobseeker/applications', icon: FileText },
+      { label: 'Profile', href: '/profile', icon: User },
     ],
     recruiter: [
-      { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'My Jobs', href: '/dashboard/jobs', icon: Briefcase },
-      { label: 'Applications Pipeline', href: '/dashboard/pipeline', icon: Users },
-      { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-      { label: 'Profile', href: '/dashboard/profile', icon: User },
+      { label: 'Overview', href: '/recruiter', icon: LayoutDashboard },
+      { label: 'My Jobs', href: '/recruiter/jobs', icon: Briefcase },
+      { label: 'Post Job', href: '/recruiter/jobs/new', icon: PlusCircle },
+      { label: 'Pipeline', href: '/recruiter/pipeline', icon: Users },
+      { label: 'Analytics', href: '/recruiter/analytics', icon: BarChart3 },
+      { label: 'Profile', href: '/profile', icon: User },
     ],
     admin: [
       { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
@@ -80,7 +81,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         {/* Navigation Items */}
         <nav className="flex-1 space-y-2">
           {currentNav.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}

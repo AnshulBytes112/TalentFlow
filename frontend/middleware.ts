@@ -12,9 +12,18 @@ export default withAuth(
       return NextResponse.redirect(new URL(redirectPath, req.url));
     }
 
-    // Redirect generic dashboard route to role-specific dashboard
-    if (pathname === '/dashboard') {
-      const redirectPath = token?.role === 'recruiter' ? '/recruiter' : '/jobseeker';
+    // Redirect generic /dashboard/* to role-specific dashboards, preserving sub-paths
+    if (pathname.startsWith('/dashboard')) {
+      const subPath = pathname.replace('/dashboard', ''); // e.g. /jobseeker/applications
+      const roleBase = token?.role === 'recruiter' ? '/recruiter' : '/jobseeker';
+      // Special case: /dashboard/profile should not be redirected to /jobseeker/profile
+      if (subPath === '/profile') {
+        return NextResponse.next();
+      }
+      // If subpath already starts with the role segment, use it; otherwise prepend role base
+      const redirectPath = subPath.startsWith('/jobseeker') || subPath.startsWith('/recruiter')
+        ? subPath
+        : roleBase + subPath;
       return NextResponse.redirect(new URL(redirectPath, req.url));
     }
 
@@ -46,5 +55,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/jobseeker/:path*', '/recruiter/:path*', '/login', '/register'],
+  matcher: ['/dashboard/:path*', '/jobseeker/:path*', '/recruiter/:path*', '/profile', '/notifications', '/login', '/register'],
 };

@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
+    "dev": "kill-port 5000 && nodemon server.js",
     "build": "echo 'Backend build completed'",
     "test": "echo 'Tests not implemented yet'"
   },
@@ -33,6 +33,7 @@
     "swagger-ui-express": "^5.0.0"
   },
   "devDependencies": {
+    "kill-port": "^2.0.1",
     "nodemon": "^3.1.14"
   },
   "engines": {

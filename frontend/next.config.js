@@ -19,16 +19,28 @@ const nextConfig = {
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     return [
       {
-        // Proxy specific backend registration endpoint
+        // Proxy backend auth endpoints (login, register, me) — NOT NextAuth's /api/auth/[...nextauth]
         source: '/api/auth/register',
         destination: `${backendUrl}/api/auth/register`,
       },
       {
-        // Proxy core backend modules
-        source: '/api/:module(jobs|applications|users|notifications|analytics|application)/:path*',
+        source: '/api/auth/login',
+        destination: `${backendUrl}/api/auth/login`,
+      },
+      {
+        source: '/api/auth/me',
+        destination: `${backendUrl}/api/auth/me`,
+      },
+      {
+        // Proxy core backend modules (with sub-paths)
+        source: '/api/:module(jobs|applications|users|notifications|analytics)/:path*',
         destination: `${backendUrl}/api/:module/:path*`,
       },
-      // Note: /api/auth/* (NextAuth) routes are NOT proxied and handled by the frontend.
+      {
+        // Proxy core backend modules (root-level, e.g. GET /api/jobs)
+        source: '/api/:module(jobs|applications|users|notifications|analytics)',
+        destination: `${backendUrl}/api/:module`,
+      },
     ];
   },
 };

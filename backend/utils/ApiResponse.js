@@ -46,17 +46,17 @@ class ApiResponse {
   }
 
   static paginated(data, pagination, message = "Success") {
-    return new ApiResponse(200, {
-      items: data,
-      pagination: {
-        page: pagination.page,
-        limit: pagination.limit,
-        total: pagination.total,
-        pages: Math.ceil(pagination.total / pagination.limit),
-        hasNext: pagination.page < Math.ceil(pagination.total / pagination.limit),
-        hasPrev: pagination.page > 1
-      }
-    }, message);
+    const response = new ApiResponse(200, data, message);
+    response.pagination = {
+      page: pagination.page,
+      limit: pagination.limit,
+      total: pagination.total,
+      pages: Math.ceil(pagination.total / pagination.limit),
+      hasNext: pagination.page < Math.ceil(pagination.total / pagination.limit),
+      hasPrev: pagination.page > 1
+    };
+    response.total = pagination.total;
+    return response;
   }
 }
 

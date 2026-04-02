@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'applied' | 'screening' | 'interview' | 'offer' | 'rejected' | 'withdrawn' | 'ghost';
+  variant?: 'default' | 'applied' | 'screening' | 'interview' | 'technical' | 'offer' | 'rejected' | 'withdrawn' | 'ghost';
 }
 
 const Badge = (props: BadgeProps) => {
@@ -16,6 +16,7 @@ const Badge = (props: BadgeProps) => {
     applied: 'bg-accent-secondary/10 text-accent-secondary border-accent-secondary/20',
     screening: 'bg-accent-warning/10 text-accent-warning border-accent-warning/20',
     interview: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+    technical: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     offer: 'bg-accent-primary/10 text-accent-primary border-accent-primary/20',
     rejected: 'bg-accent-danger/10 text-accent-danger border-accent-danger/20',
     withdrawn: 'bg-text-tertiary/10 text-text-tertiary border-text-tertiary/20',

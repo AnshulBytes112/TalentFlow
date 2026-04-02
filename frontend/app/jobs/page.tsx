@@ -8,11 +8,20 @@ import Button from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import * as Slider from '@radix-ui/react-slider';
 import { Search, MapPin, X, Filter, Loader2, Briefcase } from 'lucide-react';
-import axios from 'axios';
+import api from '@/lib/axios';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const JOB_TYPES = ['full-time', 'part-time', 'contract', 'internship', 'remote'];
 const WORK_MODES = ['remote', 'onsite', 'hybrid'];
+const JOB_CATEGORIES = ['engineering', 'design', 'marketing', 'sales', 'customer-support', 'product', 'data-science', 'hr', 'finance', 'operations', 'other'];
+const EXPERIENCE_LEVELS = ['entry-level', 'mid-level', 'senior-level', 'executive'];
+
+const QUICK_FILTERS = [
+  { label: 'Remote', value: 'remote', field: 'workMode' },
+  { label: 'Full-time', value: 'full-time', field: 'jobType' },
+  { label: 'Entry Level', value: 'entry-level', field: 'experience' },
+  { label: 'Senior Level', value: 'senior-level', field: 'experience' }
+];
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -26,6 +35,8 @@ export default function JobsPage() {
   const [location, setLocation] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedModes, setSelectedModes] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedExperience, setSelectedExperience] = useState('');
   const [salaryRange, setSalaryRange] = useState<[number, number]>([0, 200000]);
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
@@ -56,11 +67,13 @@ export default function JobsPage() {
       if (debouncedLocation) params.append('location', debouncedLocation);
       if (selectedTypes.length === 1) params.append('jobType', selectedTypes[0]); // Backend mostly expects 1 type in getJobs unless modified
       if (selectedModes.length > 0) params.append('workMode', selectedModes[0]); 
+      if (selectedCategory) params.append('category', selectedCategory);
+      if (selectedExperience) params.append('experience', selectedExperience);
       if (salaryRange[0] > 0) params.append('salaryMin', salaryRange[0].toString());
       if (salaryRange[1] < 200000) params.append('salaryMax', salaryRange[1].toString());
       if (skills.length > 0) params.append('skills', skills.join(','));
 
-      const response = await axios.get('/api/jobs', { params });
+      const response = await api.get('/api/jobs', { params });
       
       const newJobs = response.data.data;
       if (isLoadMore) {
@@ -83,7 +96,7 @@ export default function JobsPage() {
   // Initial Fetch & Filter Changes
   useEffect(() => {
     fetchJobs(false);
-  }, [debouncedSearch, debouncedLocation, selectedTypes, selectedModes, salaryRange, skills]); // eslint-disable-line
+  }, [debouncedSearch, debouncedLocation, selectedTypes, selectedModes, selectedCategory, selectedExperience, salaryRange, skills]); // eslint-disable-line
 
   const handleAddSkill = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && skillInput.trim() && !skills.includes(skillInput.trim())) {
@@ -110,6 +123,8 @@ export default function JobsPage() {
     setLocation('');
     setSelectedTypes([]);
     setSelectedModes([]);
+    setSelectedCategory('');
+    setSelectedExperience('');
     setSalaryRange([0, 200000]);
     setSkills([]);
   };
@@ -168,9 +183,28 @@ export default function JobsPage() {
 
             <div className="flex flex-wrap items-center gap-2 pt-2">
                <span className="text-xs font-bold text-text-tertiary uppercase tracking-wider mr-2">Quick Filters:</span>
-               {['Remote', 'Full-time', 'Senior Level', 'Design'].map((pill, i) => (
-                  <button key={i} onClick={() => { setSearch(pill); setLocation(''); }} className="px-4 py-1.5 rounded-full border border-border hover:border-accent-primary text-xs font-medium text-text-secondary hover:text-white transition-colors bg-bg-secondary">
-                     {pill}
+               {QUICK_FILTERS.map((filter, i) => (
+                  <button key={i} onClick={() => {
+                    if (filter.field === 'workMode') {
+                      setSelectedModes([filter.value]);
+                      setSelectedTypes([]);
+                      setSelectedCategory('');
+                      setSelectedExperience('');
+                    } else if (filter.field === 'jobType') {
+                      setSelectedTypes([filter.value]);
+                      setSelectedModes([]);
+                      setSelectedCategory('');
+                      setSelectedExperience('');
+                    } else if (filter.field === 'experience') {
+                      setSelectedExperience(filter.value);
+                      setSelectedTypes([]);
+                      setSelectedModes([]);
+                      setSelectedCategory('');
+                    }
+                    setSearch(filter.label);
+                    setLocation('');
+                  }} className="px-4 py-1.5 rounded-full border border-border hover:border-accent-primary text-xs font-medium text-text-secondary hover:text-white transition-colors bg-bg-secondary">
+                     {filter.label}
                   </button>
                ))}
             </div>
@@ -236,6 +270,48 @@ export default function JobsPage() {
                     </div>
 
                     <div className="space-y-4 pt-2">
+                       <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Category</h3>
+                       <div className="flex flex-col gap-3">
+                         <select 
+                           value={selectedCategory} 
+                           onChange={(e) => {
+                             setSelectedCategory(e.target.value);
+                             setSelectedTypes([]);
+                             setSelectedModes([]);
+                             setSelectedExperience('');
+                           }}
+                           className="w-full bg-bg-primary border border-border text-text-primary focus:ring-0 focus:ring-accent-primary/20 rounded-lg px-4 py-3"
+                         >
+                           <option value="">All Categories</option>
+                           {JOB_CATEGORIES.map(cat => (
+                             <option key={cat} value={cat}>{cat.replace('-', ' ')}</option>
+                           ))}
+                         </select>
+                       </div>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                       <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">Experience Level</h3>
+                       <div className="flex flex-col gap-3">
+                         <select 
+                           value={selectedExperience} 
+                           onChange={(e) => {
+                             setSelectedExperience(e.target.value);
+                             setSelectedTypes([]);
+                             setSelectedModes([]);
+                             setSelectedCategory('');
+                           }}
+                           className="w-full bg-bg-primary border border-border text-text-primary focus:ring-0 focus:ring-accent-primary/20 rounded-lg px-4 py-3"
+                         >
+                           <option value="">All Levels</option>
+                           {EXPERIENCE_LEVELS.map(level => (
+                             <option key={level} value={level}>{level.replace('-', ' ')}</option>
+                           ))}
+                         </select>
+                       </div>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary flex justify-between">
                           Salary Range
                           <span className="text-accent-primary font-mono">${salaryRange[0] / 1000}k - ${salaryRange[1] >= 200000 ? '200k+' : `${salaryRange[1]/1000}k`}</span>
@@ -268,6 +344,7 @@ export default function JobsPage() {
                            ))}
                          </div>
                          <Input 
+                           label="Add Skill"
                            placeholder="Type skill & enter" 
                            value={skillInput}
                            onChange={e => setSkillInput(e.target.value)}

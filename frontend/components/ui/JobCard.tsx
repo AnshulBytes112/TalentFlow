@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -13,7 +15,7 @@ export interface JobCardProps {
     title: string;
     company?: { name: string; logo?: { url: string } };
     location: string;
-    type: string;
+    type?: string;
     workMode?: string;
     salary?: { min?: number; max?: number; currency?: string };
     skills: string[];
@@ -76,7 +78,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, hasApplied }) => {
                 {companyLogo ? (
                   <img src={companyLogo} alt={companyName} className="w-full h-full object-cover rounded-xl" />
                 ) : (
-                  <Avatar name={companyName} size="lg" className="rounded-xl w-full h-full text-lg" />
+                  <Avatar initials={companyName?.[0] || ''} size="lg" className="rounded-xl w-full h-full text-lg" />
                 )}
               </div>
               <div>
@@ -100,7 +102,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, hasApplied }) => {
               <MapPin size={12} /> {job.location}
             </Badge>
             <Badge variant="ghost" className="bg-elevated text-text-secondary border-none font-medium capitalize">
-              {job.type.replace('-', ' ')}
+              {job.type?.replace('-', ' ') || 'N/A'}
             </Badge>
             {(job.workMode || job.type === 'remote') && (
               <Badge variant="ghost" className="bg-accent-primary/5 text-accent-primary border-none font-medium text-[10px] tracking-wider uppercase">

@@ -7,12 +7,16 @@ let io;
 /**
  * Initialize Socket.io with performance and security optimizations
  */
-const initSocket = (server) => {
+const initSocket = (server, corsOptions) => {
+  const socketCorsOptions = corsOptions || {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true
+  };
+
   io = socketIO(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || "http://localhost:3000",
-      methods: ["GET", "POST"],
-      credentials: true
+      ...socketCorsOptions,
+      methods: ['GET', 'POST']
     },
     pingTimeout: 60000,
     pingInterval: 25000

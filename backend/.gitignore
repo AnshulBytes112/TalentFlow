@@ -23,6 +23,9 @@ pids
 *.seed
 *.pid.lock
 
+# User uploaded files
+uploads/
+
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov

@@ -2,6 +2,11 @@ import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import axios from 'axios';
 
+const BACKEND_API_URL =
+  process.env.BACKEND_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:5000';
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -14,7 +19,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+          const response = await axios.post(`${BACKEND_API_URL}/api/auth/login`, {
             email: credentials.email,
             password: credentials.password,
           });

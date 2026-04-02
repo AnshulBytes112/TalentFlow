@@ -18,15 +18,16 @@ export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const { data: session } = useSession();
+  const accessToken = session?.user?.accessToken;
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (!session?.user?.accessToken) return;
+    if (!accessToken) return;
 
     const socketInstance = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:5000', {
       auth: {
-        token: session.user.accessToken,
+        token: accessToken,
       },
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -47,7 +48,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       socketInstance.disconnect();
     };
-  }, [session]);
+  }, [accessToken]);
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

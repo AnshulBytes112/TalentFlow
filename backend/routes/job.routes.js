@@ -19,9 +19,12 @@ const createJobValidation = [
     .isLength({ min: 50, max: 5000 })
     .withMessage('Description must be between 50 and 5000 characters'),
   body('requirements')
-    .trim()
-    .isLength({ min: 10, max: 2000 })
-    .withMessage('Requirements must be between 10 and 2000 characters'),
+    .isArray({ min: 1 })
+    .withMessage('At least one requirement is required')
+    .custom((requirements) => {
+      return requirements.every(req => typeof req === 'string' && req.trim().length > 0);
+    })
+    .withMessage('All requirements must be non-empty strings'),
   body('location')
     .trim()
     .isLength({ min: 2, max: 100 })
@@ -29,9 +32,6 @@ const createJobValidation = [
   body('jobType')
     .isIn(['full-time', 'part-time', 'contract', 'internship'])
     .withMessage('Invalid job type'),
-  body('workMode')
-    .isIn(['remote', 'onsite', 'hybrid'])
-    .withMessage('Invalid work mode'),
   body('deadline')
     .isISO8601()
     .withMessage('Deadline must be a valid date')
@@ -96,9 +96,12 @@ const updateJobValidation = [
     .withMessage('Description must be between 50 and 5000 characters'),
   body('requirements')
     .optional()
-    .trim()
-    .isLength({ min: 10, max: 2000 })
-    .withMessage('Requirements must be between 10 and 2000 characters'),
+    .isArray({ min: 1 })
+    .withMessage('Requirements must be a non-empty array')
+    .custom((requirements) => {
+      return requirements.every(req => typeof req === 'string' && req.trim().length > 0);
+    })
+    .withMessage('All requirements must be non-empty strings'),
   body('location')
     .optional()
     .trim()
@@ -108,10 +111,6 @@ const updateJobValidation = [
     .optional()
     .isIn(['full-time', 'part-time', 'contract', 'internship'])
     .withMessage('Invalid job type'),
-  body('workMode')
-    .optional()
-    .isIn(['remote', 'onsite', 'hybrid'])
-    .withMessage('Invalid work mode'),
   body('deadline')
     .optional()
     .isISO8601()
@@ -158,6 +157,7 @@ const updateJobValidation = [
 // Routes
 router.get('/', apiLimiter, optionalAuth, jobController.getJobs);
 router.get('/my/listings', verifyJWT, roleGuard('recruiter'), jobController.getMyJobs);
+router.get('/my', verifyJWT, roleGuard('recruiter'), jobController.getMyJobs);
 router.get('/:id', apiLimiter, optionalAuth, jobController.getJobById);
 
 router.post(

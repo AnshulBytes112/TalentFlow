@@ -32,20 +32,49 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+const defaultAllowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002'
+];
+
+const envOrigins = [process.env.FRONTEND_URL, process.env.FRONTEND_URLS]
+  .filter(Boolean)
+  .join(',')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...envOrigins])];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    const isLocalhost = !!origin && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+
+    if (!origin || allowedOrigins.includes(origin) || isLocalhost) {
+      return callback(null, true);
+    }
+
+    // Reject unknown origins without throwing server errors on preflight.
+    return callback(null, false);
+  },
+  credentials: true
+};
+
 // Initialize Socket.io
-socketService.initSocket(server);
+socketService.initSocket(server, corsOptions);
 
 // Middleware in correct order
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
-  credentials: true
-}));
+app.use(cors(corsOptions));
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(compression());
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve uploaded files as static assets
+app.use('/uploads', express.static('uploads'));
 
 // Rate limiting
 const limiter = rateLimit({

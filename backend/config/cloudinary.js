@@ -1,14 +1,12 @@
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-// Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configure storage for multer
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
@@ -21,7 +19,6 @@ const storage = new CloudinaryStorage({
   },
 });
 
-// Upload function for resumes and profile pictures
 const uploadToCloudinary = async (file, folder = 'job-portal') => {
   try {
     const result = await cloudinary.uploader.upload(file, {
@@ -34,7 +31,6 @@ const uploadToCloudinary = async (file, folder = 'job-portal') => {
   }
 };
 
-// Delete file from Cloudinary
 const deleteFromCloudinary = async (publicId) => {
   try {
     const result = await cloudinary.uploader.destroy(publicId);

@@ -4,10 +4,10 @@ const Notification = require('../models/Notification');
 const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
-const { JOB_STATUS, JOB_TYPES, WORK_MODES, JOB_CATEGORIES, EXPERIENCE_LEVELS } = require('../utils/constants');
+const { JOB_STATUS, JOB_TYPES, JOB_CATEGORIES, EXPERIENCE_LEVELS } = require('../utils/constants');
 const emailService = require('../services/emailService');
 const { emitToUser } = require('../services/socketService');
-const { createNotification, notifyJobClosed } = require('../services/notificationService');
+const { notifyJobClosed, notifyJobUpdated } = require('../services/notificationService');
 
 /**
  * @swagger
@@ -43,17 +43,6 @@ const { createNotification, notifyJobClosed } = require('../services/notificatio
  *         description: Job created successfully as draft
  */
 const createJob = asyncHandler(async (req, res) => {
-  // Debug: Log the entire request body
-  console.log('Request body:', req.body);
-  console.log('Request body keys:', Object.keys(req.body));
-
-  // Debug: Log specific field values
-  console.log('jobType:', req.body.jobType);
-  console.log('deadline:', req.body.deadline);
-  console.log('companyName:', req.body.companyName);
-  console.log('Expected jobType:', JOB_TYPES);
-  console.log('Expected workMode:', WORK_MODES);
-
   const {
     title,
     description,
@@ -61,7 +50,6 @@ const createJob = asyncHandler(async (req, res) => {
     skills,
     location,
     jobType,
-    workMode,
     salaryMin,
     salaryMax,
     deadline,
@@ -69,44 +57,25 @@ const createJob = asyncHandler(async (req, res) => {
     benefits,
     companyName,
     category,
-    experience
+    experience,
+    status
   } = req.body;
 
-  // Debug: Check deadline format
-  const deadlineDate = new Date(deadline);
-  console.log('Deadline date object:', deadlineDate);
-  console.log('Deadline is valid date:', !isNaN(deadlineDate.getTime()));
-  console.log('Deadline is future date:', deadlineDate > new Date());
-
-  // Debug: Log individual field values
-  console.log('Field values:');
-  console.log('title:', title);
-  console.log('description:', description);
-  console.log('requirements:', requirements);
-  console.log('location:', location);
-  console.log('jobType:', jobType);
-  console.log('companyName:', companyName);
-  console.log('category:', category);
-  console.log('experience:', experience);
-
   // Validate required fields
-  if (!title || !description || !requirements || !location || !jobType || !workMode || !deadline || !companyName || !category || !experience) {
-    throw ApiError.badRequest('Missing required fields');
+  if (!title || !description || !requirements || !location || !jobType || !deadline || !companyName || !category || !experience) {
+    throw ApiError.badRequest(
+      'Missing required fields: title, description, requirements, location, jobType, deadline, companyName, category, experience'
+    );
   }
 
   // Validate skills
   if (!skills || !Array.isArray(skills) || skills.length === 0) {
-    throw ApiError.badRequest('Skills are required');
+    throw ApiError.badRequest('Skills are required and must be an array with at least one skill');
   }
 
   // Validate job type
   if (!JOB_TYPES.includes(jobType)) {
     throw ApiError.badRequest(`Invalid job type. Must be one of: ${JOB_TYPES.join(', ')}`);
-  }
-
-  // Validate work mode
-  if (!WORK_MODES.includes(workMode)) {
-    throw ApiError.badRequest(`Invalid work mode. Must be one of: ${WORK_MODES.join(', ')}`);
   }
 
   // Validate category
@@ -120,73 +89,65 @@ const createJob = asyncHandler(async (req, res) => {
   }
 
   // Validate deadline must be future date
-  if (deadlineDate <= new Date()) {
-    throw ApiError.badRequest('Deadline must be a future date');
+  const deadlineDate = new Date(deadline);
+  if (isNaN(deadlineDate.getTime()) || deadlineDate <= new Date()) {
+    throw ApiError.badRequest('Deadline must be a valid future date');
   }
 
-  // Debug: Check if user is authenticated
-  console.log('Authenticated user:', req.user);
-  console.log('User ID:', req.user._id);
-  console.log('User ID type:', typeof req.user._id);
-  console.log('User ID string:', req.user._id.toString());
-
-  // Validate salary range
+  // Validate salary range if provided
   if (salaryMin && salaryMax && salaryMin > salaryMax) {
     throw ApiError.badRequest('Minimum salary cannot be greater than maximum salary');
   }
 
-  // Debug: Log right before Job.create
-  console.log('About to create job with data:');
-  console.log('title:', title);
-  console.log('description:', description);
-  console.log('location:', location);
-  console.log('postedBy:', req.user._id.toString());
+  // Build job data with correct schema field names
+  const jobData = {
+    title: title.trim(),
+    description: description.trim(),
+    location: location.trim(),
+    postedBy: req.user._id,
+    requirements: requirements.map(r => r.trim()).filter(r => r),
+    skills: skills.map(s => s.trim()).filter(s => s),
+    type: jobType,  // Schema field is 'type', not 'jobType'
+    expiryDate: deadlineDate,  // Schema field is 'expiryDate', not 'deadline'
+    category,
+    experience,
+    status: status === JOB_STATUS.ACTIVE ? JOB_STATUS.ACTIVE : JOB_STATUS.DRAFT
+  };
 
-  let job;
-  try {
-    // Start with minimal working data
-    const jobData = {
-      title,
-      description,
-      location,
-      postedBy: req.user._id.toString()
-    };
-
-    // Add fields that are not causing issues
-    if (requirements) jobData.requirements = requirements;
-    if (skills && Array.isArray(skills)) jobData.skills = skills;
-    if (jobType) jobData.type = jobType;
-    if (workMode) jobData.workMode = workMode;
-    if (salaryMin || salaryMax) {
-      jobData.salary = {};
-      if (salaryMin) jobData.salary.min = salaryMin;
-      if (salaryMax) jobData.salary.max = salaryMax;
-    }
-    if (deadlineDate) jobData.expiryDate = deadlineDate;
-    if (companyDescription) jobData.companyDescription = companyDescription;
-    if (benefits && Array.isArray(benefits)) jobData.benefits = benefits;
-    if (companyName) {
-      jobData.company = { name: companyName };
-    }
-    if (category) jobData.category = category;
-    if (experience) jobData.experience = experience;
-
-    console.log('Final job data:', JSON.stringify(jobData, null, 2));
-
-    job = await Job.create(jobData, {
-      status: JOB_STATUS.DRAFT
-    });
-
-    console.log('Job created successfully:', job._id);
-    console.log('Job postedBy:', job.postedBy);
-  } catch (error) {
-    console.error('Error creating job:', error);
-    throw error;
+  // Add optional fields
+  if (salaryMin || salaryMax) {
+    jobData.salary = {};
+    if (salaryMin) jobData.salary.min = salaryMin;
+    if (salaryMax) jobData.salary.max = salaryMax;
   }
 
-  res.status(201).json(
-    ApiResponse.created(job, 'Job created successfully')
-  );
+  if (companyDescription) {
+    jobData.company = jobData.company || {};
+    jobData.company.description = companyDescription;
+  }
+
+  if (benefits && Array.isArray(benefits)) {
+    jobData.benefits = benefits.map(b => b.trim()).filter(b => b);
+  }
+
+  if (companyName) {
+    jobData.company = jobData.company || {};
+    jobData.company.name = companyName.trim();
+  }
+
+  try {
+    const job = await Job.create(jobData);
+
+    res.status(201).json(
+      ApiResponse.created(job, 'Job created successfully')
+    );
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      throw ApiError.badRequest(`Validation failed: ${messages.join(', ')}`);
+    }
+    throw error;
+  }
 });
 
 /**
@@ -224,8 +185,8 @@ const publishJob = asyncHandler(async (req, res) => {
     throw ApiError.badRequest('Only draft jobs can be published');
   }
 
-  // Check all required fields are filled
-  const requiredFields = ['title', 'description', 'requirements', 'location', 'jobType', 'workMode', 'deadline'];
+  // Check all required fields are filled (use correct schema field names)
+  const requiredFields = ['title', 'description', 'requirements', 'location', 'type', 'expiryDate'];
   const missingFields = requiredFields.filter(field => !job[field]);
   if (missingFields.length > 0) {
     throw ApiError.badRequest(`Cannot publish job. Missing required fields: ${missingFields.join(', ')}`);
@@ -263,7 +224,28 @@ const publishJob = asyncHandler(async (req, res) => {
  */
 const updateJob = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const updateData = req.body;
+  let updateData = req.body;
+
+  const fieldLabels = {
+    title: 'title',
+    description: 'description',
+    requirements: 'requirements',
+    skills: 'skills',
+    location: 'location',
+    jobType: 'job type',
+    type: 'job type',
+    salaryMin: 'minimum salary',
+    salaryMax: 'maximum salary',
+    salary: 'salary',
+    deadline: 'application deadline',
+    expiryDate: 'application deadline',
+    companyDescription: 'company description',
+    benefits: 'benefits',
+    companyName: 'company name',
+    category: 'category',
+    experience: 'experience level',
+    status: 'status'
+  };
 
   const job = await Job.findById(id);
   if (!job) {
@@ -280,40 +262,115 @@ const updateJob = asyncHandler(async (req, res) => {
     throw ApiError.badRequest('Cannot update closed or expired jobs');
   }
 
-  // Cannot set deadline to past date
+  // Map request field names to schema field names
+  const mappedData = {};
+
+  // Handle deadline → expiryDate mapping
   if (updateData.deadline) {
     const deadlineDate = new Date(updateData.deadline);
     if (deadlineDate <= new Date()) {
       throw ApiError.badRequest('Deadline must be a future date');
     }
-    updateData.deadline = deadlineDate;
+    mappedData.expiryDate = deadlineDate;
+  } else if (updateData.expiryDate) {
+    const expiryDate = new Date(updateData.expiryDate);
+    if (expiryDate <= new Date()) {
+      throw ApiError.badRequest('Expiry date must be a future date');
+    }
+    mappedData.expiryDate = expiryDate;
   }
 
-  // Validate job type if provided
-  if (updateData.jobType && !JOB_TYPES.includes(updateData.jobType)) {
-    throw ApiError.badRequest(`Invalid job type. Must be one of: ${JOB_TYPES.join(', ')}`);
+  // Handle jobType → type mapping
+  if (updateData.jobType) {
+    if (!JOB_TYPES.includes(updateData.jobType)) {
+      throw ApiError.badRequest(`Invalid job type. Must be one of: ${JOB_TYPES.join(', ')}`);
+    }
+    mappedData.type = updateData.jobType;
+  } else if (updateData.type) {
+    if (!JOB_TYPES.includes(updateData.type)) {
+      throw ApiError.badRequest(`Invalid job type. Must be one of: ${JOB_TYPES.join(', ')}`);
+    }
+    mappedData.type = updateData.type;
   }
 
-  // Validate work mode if provided
-  if (updateData.workMode && !WORK_MODES.includes(updateData.workMode)) {
-    throw ApiError.badRequest(`Invalid work mode. Must be one of: ${WORK_MODES.join(', ')}`);
+  // Copy other fields directly
+  const directFields = ['title', 'description', 'location', 'requirements', 'skills', 'category', 'experience', 'status', 'benefits'];
+  for (const field of directFields) {
+    if (updateData[field] !== undefined) {
+      mappedData[field] = updateData[field];
+    }
   }
 
-  // Validate salary range if both provided
-  if (updateData.salaryMin && updateData.salaryMax && updateData.salaryMin > updateData.salaryMax) {
-    throw ApiError.badRequest('Minimum salary cannot be greater than maximum salary');
+  // Handle salary
+  if (updateData.salaryMin !== undefined || updateData.salaryMax !== undefined) {
+    const salary = {};
+    if (updateData.salaryMin !== undefined) salary.min = updateData.salaryMin;
+    if (updateData.salaryMax !== undefined) salary.max = updateData.salaryMax;
+    
+    // Validate salary range
+    if (salary.min && salary.max && salary.min > salary.max) {
+      throw ApiError.badRequest('Minimum salary cannot be greater than maximum salary');
+    }
+    mappedData.salary = salary;
+  } else if (updateData.salary !== undefined) {
+    mappedData.salary = updateData.salary;
+  }
+
+  // Handle company info
+  if (updateData.companyName || updateData.companyDescription) {
+    mappedData.company = job.company || {};
+    if (updateData.companyName) mappedData.company.name = updateData.companyName;
+    if (updateData.companyDescription) mappedData.company.description = updateData.companyDescription;
   }
 
   // Convert skills to array if provided
-  if (updateData.skills) {
-    updateData.skills = Array.isArray(updateData.skills) ? updateData.skills : [updateData.skills];
+  if (mappedData.skills) {
+    mappedData.skills = Array.isArray(mappedData.skills) ? mappedData.skills : [mappedData.skills];
   }
 
   const updatedJob = await Job.findByIdAndUpdate(
     id,
-    updateData,
+    mappedData,
     { new: true, runValidators: true }
   );
+
+  // Notify all applicants about job updates without blocking recruiter workflow.
+  const updatedFields = Array.from(new Set(
+    Object.keys(mappedData)
+      .filter((key) => key !== 'updatedAt' && key !== '__v')
+      .map((key) => fieldLabels[key] || key)
+  ));
+
+  setImmediate(async () => {
+    try {
+      const applications = await Application.find({
+        job: id,
+        status: { $ne: 'withdrawn' }
+      }).populate('applicant', 'firstName email');
+
+      if (!applications.length) return;
+
+      const notificationTasks = applications.map(async (application) => {
+        try {
+          await notifyJobUpdated(application, updatedJob, updatedFields);
+        } catch (error) {
+          console.error(`Failed to send in-app job update notification to applicant ${application.applicant?._id}:`, error.message);
+        }
+
+        try {
+          if (application.applicant?.email) {
+            await emailService.sendJobUpdatedEmail(application.applicant, updatedJob, updatedFields);
+          }
+        } catch (error) {
+          console.error(`Failed to send job update email to applicant ${application.applicant?._id}:`, error.message);
+        }
+      });
+
+      await Promise.allSettled(notificationTasks);
+    } catch (error) {
+      console.error('Failed to process job update notifications:', error.message);
+    }
+  });
 
   res.json(
     ApiResponse.success(updatedJob, 'Job updated successfully')

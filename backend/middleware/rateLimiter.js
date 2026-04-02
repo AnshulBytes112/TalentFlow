@@ -1,5 +1,5 @@
 const rateLimit = require('express-rate-limit');
-const { ApiError } = require('../utils/ApiError');
+const ApiError = require('../utils/ApiError');
 
 /**
  * Auth limiter: 10 req / 15 min per IP

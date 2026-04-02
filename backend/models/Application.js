@@ -1,16 +1,15 @@
 const mongoose = require('mongoose');
 const mongooseErrorPlugin = require('../utils/mongooseErrorPlugin');
 
-// Valid transitions between statuses
 const VALID_TRANSITIONS = {
   'applied': ['screening', 'rejected', 'withdrawn'],
   'screening': ['interview', 'technical', 'rejected', 'withdrawn'],
   'interview': ['technical', 'offer', 'rejected', 'withdrawn'],
   'technical': ['final', 'offer', 'rejected', 'withdrawn'],
   'final': ['offer', 'rejected', 'withdrawn'],
-  'offer': ['rejected', 'withdrawn'], // offer can be rejected or withdrawn
-  'rejected': [], // terminal state
-  'withdrawn': [] // terminal state
+  'offer': ['rejected', 'withdrawn'],
+  'rejected': [],
+  'withdrawn': []
 };
 
 const applicationSchema = new mongoose.Schema({
@@ -187,7 +186,6 @@ const applicationSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes
 applicationSchema.index({ job: 1, applicant: 1 }, { unique: true });
 applicationSchema.index({ applicant: 1 });
 applicationSchema.index({ job: 1 });
@@ -197,12 +195,10 @@ applicationSchema.index({ priority: 1 });
 applicationSchema.index({ 'interviewSchedule.date': 1 });
 applicationSchema.index({ createdAt: -1 });
 
-// Virtual for checking if application is active
 applicationSchema.virtual('isActive').get(function () {
   return !this.isArchived && this.status !== 'withdrawn' && this.status !== 'rejected';
 });
 
-// Method to add timeline entry
 applicationSchema.methods.addTimelineEntry = function (status, note, updatedBy) {
   this.timeline.push({
     status,
@@ -213,15 +209,12 @@ applicationSchema.methods.addTimelineEntry = function (status, note, updatedBy) 
   return this.save();
 };
 
-// Method to update status with validation
 applicationSchema.methods.updateStatus = function (newStatus, note, updatedBy) {
-  // Validate status transition
   const validTransitions = VALID_TRANSITIONS[this.status] || [];
   if (!validTransitions.includes(newStatus)) {
     throw new Error(`Invalid status transition from ${this.status} to ${newStatus}. Valid transitions: ${validTransitions.join(', ')}`);
   }
 
-  // Update status and add to timeline atomically
   this.status = newStatus;
   this.timeline.push({
     status: newStatus,
@@ -233,7 +226,6 @@ applicationSchema.methods.updateStatus = function (newStatus, note, updatedBy) {
   return this.save();
 };
 
-// Pre-save middleware to update timeline
 applicationSchema.pre('save', function (next) {
   if (this.isModified('status') && !this.isNew) {
     this.timeline.push({
@@ -245,7 +237,6 @@ applicationSchema.pre('save', function (next) {
   next();
 });
 
-// Apply mongoose error plugin
 applicationSchema.plugin(mongooseErrorPlugin);
 
 module.exports = mongoose.model('Application', applicationSchema);

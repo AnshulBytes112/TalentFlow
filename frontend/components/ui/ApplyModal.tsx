@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import { UploadCloud, FileText } from 'lucide-react';
-import axios from 'axios';
+import api from '@/lib/axios';
 import { toast } from 'react-hot-toast';
 
 interface ApplyModalProps {
@@ -47,7 +47,7 @@ const ApplyModal: React.FC<ApplyModalProps> = ({
       if (coverLetter) formData.append('coverLetter', coverLetter);
       if (resumeFile) formData.append('resume', resumeFile);
 
-      await axios.post(`/api/applications/${jobId}`, formData, {
+      await api.post(`/api/applications/${jobId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

@@ -1,40 +1,117 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
+import Avatar from '@/components/ui/Avatar';
 import { 
-  Users, 
   Briefcase, 
+  Users, 
   Clock, 
   CheckCircle2, 
   ArrowUpRight,
-  Filter
+  ArrowDownRight,
+  Plus,
+  Eye,
+  BarChart3,
+  Calendar,
+  Edit,
+  Trash2,
+  X,
+  MoreHorizontal
 } from 'lucide-react';
-import axios from 'axios';
+import api from '@/lib/axios';
+import { format, formatDistanceToNow } from 'date-fns';
+import { toast } from 'react-hot-toast';
+import Modal from '@/components/ui/Modal';
+
+const JOB_STATUSES: Record<string, { label: string; color: string }> = {
+  draft: { label: 'Draft', color: 'bg-text-tertiary' },
+  active: { label: 'Active', color: 'bg-accent-primary' },
+  closed: { label: 'Closed', color: 'bg-accent-secondary' },
+  expired: { label: 'Expired', color: 'bg-accent-danger' }
+};
 
 export default function RecruiterDashboardPage() {
   const { data: session } = useSession();
   const [stats, setStats] = useState<any>(null);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [jobPage, setJobPage] = useState(1);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
+  const [confirmJob, setConfirmJob] = useState<any | null>(null);
+  const [isPerformingAction, setIsPerformingAction] = useState(false);
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      const [statsRes, jobsRes, appsRes] = await Promise.all([
+        api.get('/api/analytics/recruiter'),
+        api.get(`/api/jobs/my/listings?page=${jobPage}&limit=10`),
+        api.get('/api/applications/my/recent?limit=10')
+      ]);
+      
+      setStats(statsRes.data.data);
+      setJobs(jobsRes.data.data);
+      setTotalJobs(jobsRes.data.total || 0);
+      setRecentApplications(appsRes.data.data);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await axios.get('/api/analytics/recruiter');
-        setStats(response.data.data);
-      } catch (error) {
-        console.error('Failed to fetch stats', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (session) fetchDashboardData();
+  }, [session, jobPage]);
 
-    if (session) fetchStats();
-  }, [session]);
+  const handleJobAction = async (jobId: string, action: string) => {
+    try {
+      if (action === 'delete') {
+        await api.delete(`/api/jobs/${jobId}`);
+        toast.success('Job deleted successfully');
+      } else if (action === 'close') {
+        await api.patch(`/api/jobs/${jobId}/close`);
+        toast.success('Job closed successfully');
+      }
+      fetchDashboardData();
+    } catch (error) {
+      toast.error('Failed to perform action');
+    }
+  };
+
+  const openConfirm = (action: 'delete' | 'close', job: any) => {
+    setConfirmAction(action);
+    setConfirmJob(job);
+    setConfirmModalOpen(true);
+  };
+
+  const closeConfirm = () => {
+    setConfirmModalOpen(false);
+    setConfirmAction(null);
+    setConfirmJob(null);
+  };
+
+  const performConfirmedAction = async () => {
+    if (!confirmAction || !confirmJob) return;
+    try {
+      setIsPerformingAction(true);
+      await handleJobAction(confirmJob._id, confirmAction);
+    } finally {
+      setIsPerformingAction(false);
+      closeConfirm();
+    }
+  };
 
   const container = {
     hidden: { opacity: 0 },
@@ -46,112 +123,328 @@ export default function RecruiterDashboardPage() {
     show: { opacity: 1, y: 0 }
   };
 
+  const statsData = useMemo(() => [
+    { 
+      label: 'Active Jobs', 
+      value: stats?.activeJobs || 0, 
+      trend: stats?.activeJobsTrend || '+12%', 
+      icon: Briefcase, 
+      color: 'text-accent-primary', 
+      bg: 'bg-accent-primary/10' 
+    },
+    { 
+      label: 'Total Applications', 
+      value: stats?.totalApplications || 0, 
+      trend: stats?.totalApplicationsTrend || '+24%', 
+      icon: Users, 
+      color: 'text-accent-secondary', 
+      bg: 'bg-accent-secondary/10' 
+    },
+    { 
+      label: 'Pending Review', 
+      value: stats?.pendingReview || 0, 
+      trend: stats?.pendingReviewTrend || '+8%', 
+      icon: Clock, 
+      color: 'text-accent-warning', 
+      bg: 'bg-accent-warning/10' 
+    },
+    { 
+      label: 'Offers Extended', 
+      value: stats?.offersExtended || 0, 
+      trend: stats?.offersExtendedTrend || '+15%', 
+      icon: CheckCircle2, 
+      color: 'text-luxury', 
+      bg: 'bg-luxury/10' 
+    }
+  ], [stats]);
+
   return (
     <DashboardLayout>
       <div className="space-y-10">
+        {/* Header Section */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-2">
             <Badge variant="screening" className="px-3 py-1 text-[10px] uppercase font-black tracking-widest bg-accent-primary/10 text-accent-primary border-none">
-              Recruiter Ecosystem
+              Recruiter Dashboard
             </Badge>
             <h1 className="text-3xl md:text-4xl font-display font-black text-white tracking-tight leading-none">
               Welcome back, <span className="text-accent-primary italic">{session?.user?.name?.split(' ')[0]}</span>.
             </h1>
             <p className="text-text-secondary font-medium tracking-tight">
-              Your hiring pipeline is active and performing at peak efficiency.
+              Manage your job postings and track applicant pipeline.
             </p>
-          </div>
-          <div className="flex items-center gap-3">
-             <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-elevated/50 border border-border text-sm font-bold text-text-secondary hover:text-text-primary transition-all">
-                <Filter size={16} /> Filters
-             </button>
-             <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent-primary text-bg-primary text-sm font-black hover:shadow-[0_0_20px_rgba(110,231,183,0.4)] transition-all">
-                Download Report
-             </button>
           </div>
         </header>
 
-        <motion.div 
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-        >
-          {[
-            { label: 'Active Jobs', value: stats?.activeJobs || '12', icon: Briefcase, color: 'text-accent-primary', bg: 'bg-accent-primary/10' },
-            { label: 'Total Applicants', value: stats?.totalApplicants || '458', icon: Users, color: 'text-accent-secondary', bg: 'bg-accent-secondary/10' },
-            { label: 'Interviews Prep', value: '24', icon: Clock, color: 'text-accent-warning', bg: 'bg-accent-warning/10' },
-            { label: 'Offers Sent', value: '8', icon: CheckCircle2, color: 'text-luxury', bg: 'bg-luxury/10' },
-          ].map((stat, idx) => (
-            <motion.div key={idx} variants={item}>
-              <Card className="hover:border-accent-primary/30 transition-colors cursor-pointer group h-full">
-                <CardContent className="pt-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
-                      <stat.icon size={24} />
+        {/* Stats Row */}
+        {!isLoading && (
+          <motion.div 
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"
+          >
+            {statsData.map((stat, idx) => (
+              <motion.div key={idx} variants={item}>
+                <Card className="hover:border-border/80 transition-colors h-full">
+                  <CardContent className="pt-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
+                        <stat.icon size={20} />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {stat.trend.startsWith('+') ? (
+                          <ArrowUpRight size={12} className="text-accent-primary" />
+                        ) : (
+                          <ArrowDownRight size={12} className="text-accent-danger" />
+                        )}
+                        <span className={`text-[10px] font-black tracking-widest ${
+                          stat.trend.startsWith('+') ? 'text-accent-primary' : 'text-accent-danger'
+                        }`}>
+                          {stat.trend}
+                        </span>
+                      </div>
                     </div>
-                    <ArrowUpRight size={20} className="text-text-tertiary group-hover:text-text-primary transition-colors" />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="text-2xl font-display font-black text-white font-mono">{stat.value}</div>
-                    <div className="text-[10px] uppercase font-black tracking-widest text-text-tertiary">{stat.label}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
+                    <div className="space-y-1">
+                      <div className="text-3xl font-display font-black text-white font-mono">{stat.value}</div>
+                      <div className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary">{stat.label}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
 
-        {/* Existing Layout Elements */}
-        <div className="grid lg:grid-cols-3 gap-8">
-           <Card className="lg:col-span-2 border-border transition-all">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-xl font-display font-black uppercase tracking-tight text-white">Recent Activity</CardTitle>
-                <button className="text-xs font-bold text-accent-primary hover:underline">View All</button>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-elevated/20 border border-border/50 hover:border-border transition-colors">
+        {/* Quick Actions Bar */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-6 bg-bg-card border border-border rounded-2xl">
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+            <Link href="/recruiter/jobs/new">
+              <Button className="px-6 py-3 font-bold rounded-xl whitespace-nowrap">
+                <Plus size={16} className="mr-2" />
+                Post New Job
+              </Button>
+            </Link>
+            <Link href="/recruiter/pipeline">
+              <Button variant="secondary" className="px-6 py-3 font-bold rounded-xl whitespace-nowrap">
+                <Eye size={16} className="mr-2" />
+                View Pipeline
+              </Button>
+            </Link>
+            <Link href="/recruiter/analytics">
+              <Button variant="ghost" className="px-6 py-3 font-bold rounded-xl whitespace-nowrap">
+                <BarChart3 size={16} className="mr-2" />
+                View Analytics
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* My Jobs Table */}
+        <Card className="border-border">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-xl font-display font-black uppercase tracking-tight text-white">My Jobs</CardTitle>
+            <Link href="/recruiter/jobs">
+              <Button variant="ghost" className="text-xs font-bold text-accent-primary hover:underline">
+                View All
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} className="h-16 rounded-xl bg-bg-secondary animate-pulse" />
+                ))}
+              </div>
+            ) : jobs.length === 0 ? (
+              <div className="py-12 text-center">
+                <Briefcase size={40} className="text-text-tertiary mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-white mb-2">No jobs posted yet</h3>
+                <p className="text-sm text-text-secondary mb-4">Get started by posting your first job opening.</p>
+                <Link href="/recruiter/jobs/new">
+                  <Button>
+                    <Plus size={16} className="mr-2" />
+                    Post Your First Job
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-text-tertiary">Job Title</th>
+                      <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-text-tertiary">Status</th>
+                      <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-text-tertiary">Applications</th>
+                      <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-text-tertiary">Posted</th>
+                      <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-text-tertiary">Deadline</th>
+                      <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-text-tertiary">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jobs.map((job) => (
+                      <tr key={job._id} className="border-b border-border hover:bg-bg-secondary/50 transition-colors">
+                        <td className="py-3 px-4">
+                          <div>
+                            <h4 className="text-sm font-bold text-white">{job.title}</h4>
+                            <p className="text-xs text-text-tertiary">{job.type} • {job.workMode}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge className={`${JOB_STATUSES[job.status as keyof typeof JOB_STATUSES]?.color} text-white text-[9px] px-2 py-1`}>
+                            {JOB_STATUSES[job.status as keyof typeof JOB_STATUSES]?.label}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-text-primary">{job.applicationCount || 0}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-text-secondary">
+                            {format(new Date(job.createdAt), 'MMM d, yyyy')}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-text-secondary">
+                            {job.deadline ? format(new Date(job.deadline), 'MMM d, yyyy') : 'No deadline'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <Link href={`/recruiter/jobs/${job._id}/applications`}>
+                              <Button variant="ghost" size="sm" className="text-xs">
+                                <Eye size={12} />
+                              </Button>
+                            </Link>
+                            <Link href={`/recruiter/jobs/${job._id}/edit`}>
+                              <Button variant="ghost" size="sm" className="text-xs">
+                                <Edit size={12} />
+                              </Button>
+                            </Link>
+                            {job.status === 'active' && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-xs"
+                                onClick={(e) => { e.stopPropagation(); openConfirm('close', job); }}
+                                title="Close job"
+                                aria-label="Close job"
+                              >
+                                <X size={12} />
+                              </Button>
+                            )}
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-xs text-accent-danger"
+                              onClick={(e) => { e.stopPropagation(); openConfirm('delete', job); }}
+                              title="Delete job"
+                              aria-label="Delete job"
+                            >
+                              <Trash2 size={12} />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                
+                {/* Pagination */}
+                {totalJobs > 10 && (
+                  <div className="flex justify-center mt-6 gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      disabled={jobPage === 1}
+                      onClick={() => setJobPage(jobPage - 1)}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm text-text-secondary py-2 px-4">
+                      Page {jobPage} of {Math.ceil(totalJobs / 10)}
+                    </span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      disabled={jobPage >= Math.ceil(totalJobs / 10)}
+                      onClick={() => setJobPage(jobPage + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        {/* Confirm Action Modal */}
+        <Modal
+          isOpen={confirmModalOpen}
+          onClose={closeConfirm}
+          title={confirmAction === 'delete' ? 'Delete Job' : 'Confirm Action'}
+          description={confirmJob ? `Are you sure you want to ${confirmAction === 'delete' ? 'delete' : 'close'} the job "${confirmJob.title}"? This action cannot be undone.` : ''}
+          maxWidth="sm"
+        >
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={closeConfirm} disabled={isPerformingAction}>Cancel</Button>
+            <Button variant="danger" onClick={performConfirmedAction} isLoading={isPerformingAction}>
+              {confirmAction === 'delete' ? 'Delete Job' : 'Close Job'}
+            </Button>
+          </div>
+        </Modal>
+
+        {/* Recent Applications Widget */}
+        <Card className="border-border">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-xl font-display font-black uppercase tracking-tight text-white">Recent Applications</CardTitle>
+            <Link href="/recruiter/pipeline">
+              <Button variant="ghost" className="text-xs font-bold text-accent-primary hover:underline">
+                View Pipeline
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {recentApplications.length === 0 ? (
+              <div className="py-8 text-center">
+                <Users size={40} className="text-text-tertiary mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-white mb-2">No recent applications</h3>
+                <p className="text-sm text-text-secondary">Applications will appear here as candidates apply.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentApplications.map((application) => (
+                  <div 
+                    key={application._id} 
+                    className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary/30 border border-border hover:border-border/80 transition-colors cursor-pointer"
+                    onClick={() => window.location.href = `/recruiter/pipeline?job=${application.job._id}`}
+                  >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-bg-secondary flex items-center justify-center border border-border">
-                        <Briefcase size={20} className="text-accent-primary" />
-                      </div>
+                      <Avatar
+                        initials={`${application.applicant.firstName?.[0] || ''}${application.applicant.lastName?.[0] || ''}`.toUpperCase()}
+                        size="md"
+                      />
                       <div>
-                        <h4 className="text-sm font-bold text-text-primary">New Application Received</h4>
-                        <p className="text-xs text-text-tertiary">Senior Full Stack Engineer • Just now</p>
+                        <h4 className="text-sm font-bold text-white">
+                          {application.applicant.firstName} {application.applicant.lastName}
+                        </h4>
+                        <p className="text-xs text-text-tertiary">
+                          Applied to {application.job.title} • {formatDistanceToNow(new Date(application.createdAt), { addSuffix: true })}
+                        </p>
                       </div>
                     </div>
-                    <Badge variant={i % 2 === 0 ? 'offer' : 'applied'} className="text-[9px]">
-                       {i % 2 === 0 ? 'HIGH PRIORITY' : 'NEW'}
-                    </Badge>
+                    <div className="flex items-center gap-3">
+                      <Badge variant={application.stage} className="text-[9px]">
+                        {application.stage}
+                      </Badge>
+                      <ArrowUpRight size={16} className="text-text-tertiary" />
+                    </div>
                   </div>
                 ))}
-              </CardContent>
-           </Card>
-
-           <Card className="bg-gradient-to-br from-bg-card to-accent-primary/5 border-border">
-              <CardHeader>
-                <CardTitle className="text-xl font-display font-black uppercase tracking-tight text-white">Elite Performance</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8">
-                <div className="flex flex-col items-center justify-center p-8 text-center space-y-4">
-                   <div className="relative w-32 h-32 flex items-center justify-center">
-                      <svg className="w-full h-full transform -rotate-90">
-                         <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-elevated" />
-                         <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={Math.PI * 2 * 58} strokeDashoffset={Math.PI * 2 * 58 * 0.25} className="text-accent-primary" />
-                      </svg>
-                      <div className="absolute text-3xl font-display font-black text-white">75%</div>
-                   </div>
-                   <p className="text-sm text-text-secondary font-medium px-4">
-                      Your response time is 15% faster than last month.
-                   </p>
-                </div>
-                <button className="w-full py-4 text-xs font-black uppercase tracking-[0.2em] bg-bg-primary text-white border border-border hover:border-accent-primary transition-all rounded-xl">
-                   Optimize Performance
-                </button>
-              </CardContent>
-           </Card>
-        </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

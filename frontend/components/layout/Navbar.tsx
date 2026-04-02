@@ -1,36 +1,110 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, User, LogOut, ChevronDown, Menu, X, CheckSquare } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useSocket } from '@/lib/socket';
 import { cn } from '@/lib/utils';
+import api from '@/lib/axios';
 import Button from '@/components/ui/Button';
 import Avatar from '@/components/ui/Avatar';
 import Badge from '@/components/ui/Badge';
 import toast from 'react-hot-toast';
+import { formatDistanceToNow } from 'date-fns';
+
+interface UINotification {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+}
 
 
 const Navbar = () => {
   const { data: session, status } = useSession();
-  const { socket, isConnected } = useSocket();
+  const accessToken = session?.user?.accessToken;
+  const { socket } = useSocket();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0); 
 
   // Notification state
-  const [notifications, setNotifications] = useState<any[]>([
-    { id: 'mock-1', title: 'Welcome to TalentFlow', message: 'Your elite journey starts here.', time: 'Just now', read: false },
-  ]);
+  const [notifications, setNotifications] = useState<UINotification[]>([]);
+  const lastLoadedTokenRef = useRef<string | null>(null);
+
+  const notificationsHref = '/notifications';
+
+  const mapNotification = (n: any): UINotification => ({
+    id: n._id || n.id,
+    title: n.title || 'Notification',
+    message: n.message || '',
+    time: n.createdAt ? formatDistanceToNow(new Date(n.createdAt), { addSuffix: true }) : 'Just now',
+    read: n.status === 'read' || n.read === true,
+  });
+
+  const loadNotifications = async () => {
+    try {
+      const [listRes, unreadRes] = await Promise.all([
+        api.get('/api/notifications?limit=5&page=1'),
+        api.get('/api/notifications/unread-count'),
+      ]);
+
+      const list = listRes?.data?.data?.notifications || [];
+      const unread = unreadRes?.data?.data?.count || 0;
+
+      setNotifications(list.map(mapNotification));
+      setUnreadCount(unread);
+    } catch (error) {
+      // Silent fallback: navbar should still render if notifications endpoint fails.
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  };
+
+  const markAllRead = async () => {
+    try {
+      await api.patch('/api/notifications/read-all');
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+      toast.success('All notifications marked as read');
+    } catch (error) {
+      toast.error('Failed to mark notifications as read');
+    }
+  };
+
+  useEffect(() => {
+    if (!accessToken) {
+      lastLoadedTokenRef.current = null;
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
+    if (lastLoadedTokenRef.current === accessToken) {
+      return;
+    }
+
+    lastLoadedTokenRef.current = accessToken;
+    void loadNotifications();
+  }, [accessToken]);
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('notification', (notif: any) => {
-      setNotifications(prev => [notif, ...prev].slice(0, 5));
+    const handleIncomingNotification = (notif: any) => {
+      const next = mapNotification({
+        id: notif.id,
+        title: notif.title,
+        message: notif.message,
+        createdAt: notif.createdAt,
+        status: 'unread',
+      });
+
+      setNotifications(prev => [next, ...prev].slice(0, 5));
       setUnreadCount(prev => prev + 1);
       toast.success(notif.title || 'New Notification', {
         icon: '🔔',
@@ -40,10 +114,14 @@ const Navbar = () => {
           border: '1px solid rgba(110, 231, 183, 0.3)',
         }
       });
-    });
+    };
+
+    socket.on('notification:new', handleIncomingNotification);
+    socket.on('notification', handleIncomingNotification);
 
     return () => {
-      socket.off('notification');
+      socket.off('notification:new', handleIncomingNotification);
+      socket.off('notification', handleIncomingNotification);
     };
   }, [socket]);
 
@@ -99,11 +177,17 @@ const Navbar = () => {
                     >
                       <div className="p-4 border-b border-border flex items-center justify-between">
                         <h4 className="font-display font-bold text-text-primary">Notifications</h4>
-                        <button className="text-xs text-accent-primary hover:underline flex items-center gap-1 font-semibold">
+                        <button
+                          onClick={markAllRead}
+                          className="text-xs text-accent-primary hover:underline flex items-center gap-1 font-semibold"
+                        >
                           <CheckSquare size={12} /> Mark all read
                         </button>
                       </div>
                       <div className="max-h-80 overflow-y-auto">
+                        {notifications.length === 0 && (
+                          <div className="p-4 text-xs text-text-tertiary">No notifications yet.</div>
+                        )}
                         {notifications.map(n => (
                           <div key={n.id} className={cn(
                             "p-4 border-b border-border/50 hover:bg-elevated/30 transition-colors cursor-pointer group",
@@ -117,7 +201,7 @@ const Navbar = () => {
                           </div>
                         ))}
                       </div>
-                      <Link href="/dashboard/notifications" className="block p-3 text-center text-xs text-text-tertiary hover:text-text-primary transition-colors hover:bg-elevated/50 font-bold">
+                      <Link href={notificationsHref} className="block p-3 text-center text-xs text-text-tertiary hover:text-text-primary transition-colors hover:bg-elevated/50 font-bold">
                         View all notifications
                       </Link>
                     </motion.div>
@@ -150,7 +234,7 @@ const Navbar = () => {
                          </Badge>
                          <p className="text-xs text-text-tertiary truncate">{session.user?.email}</p>
                       </div>
-                      <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-text-secondary hover:text-accent-primary hover:bg-accent-primary/5 rounded-xl transition-all group">
+                      <Link href="/profile" className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-text-secondary hover:text-accent-primary hover:bg-accent-primary/5 rounded-xl transition-all group">
                         <User size={18} className="text-text-tertiary group-hover:text-accent-primary transition-colors" /> My Profile
                       </Link>
                       <button 

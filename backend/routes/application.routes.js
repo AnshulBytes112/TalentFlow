@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, param } = require('express-validator');
 const multer = require('multer');
+const path = require('path');
 const router = express.Router();
 
 const applicationController = require('../controllers/application.controller');
@@ -10,21 +11,37 @@ const { validate } = require('../middleware/validate');
 const { uploadLimiter, apiLimiter } = require('../middleware/rateLimiter');
 const { MAX_FILE_SIZE, ALLOWED_FILE_TYPES } = require('../utils/constants');
 
-// Configure multer for resume uploads
+// Use Cloudinary if credentials are provided, otherwise use disk storage for local dev
+let uploadStorage;
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  const { storage } = require('../config/cloudinary');
+  uploadStorage = storage;
+} else {
+  // Fallback to disk storage for local development
+  uploadStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.join(__dirname, '../uploads'));
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, `resume-${uniqueSuffix}${path.extname(file.originalname)}`);
+    }
+  });
+}
+
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: uploadStorage,
   limits: {
     fileSize: MAX_FILE_SIZE
   },
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_FILE_TYPES.includes(file.mimetype)) {
-      return cb(new Error('Invalid file type. Only PDF files are allowed'), false);
+      return cb(new Error('Invalid file type. Only PDF, DOC, DOCX files are allowed'), false);
     }
     cb(null, true);
   }
 });
 
-// Validation rules
 const applyToJobValidation = [
   body('coverLetter')
     .optional()
@@ -35,7 +52,7 @@ const applyToJobValidation = [
 
 const updateStageValidation = [
   body('stage')
-    .isIn(['applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'])
+    .isIn(['applied', 'screening', 'interview', 'technical', 'offer', 'rejected', 'withdrawn'])
     .withMessage('Invalid stage'),
   body('note')
     .optional()
@@ -56,9 +73,15 @@ const jobIdValidation = [
     .withMessage('Invalid job ID')
 ];
 
-// Routes
+const noteValidation = [
+  body('note')
+    .trim()
+    .isLength({ min: 1, max: 500 })
+    .withMessage('Note must be between 1 and 500 characters')
+];
+
 router.post(
-  '/',
+  '/:jobId',
   uploadLimiter,
   verifyJWT,
   roleGuard('jobseeker'),
@@ -73,6 +96,20 @@ router.get(
   verifyJWT,
   roleGuard('jobseeker'),
   applicationController.getMyApplications
+);
+
+router.get(
+  '/my/recent',
+  verifyJWT,
+  roleGuard('recruiter'),
+  applicationController.getRecruiterRecentApplications
+);
+
+router.get(
+  '/my/pipeline',
+  verifyJWT,
+  roleGuard('recruiter'),
+  applicationController.getRecruiterPipeline
 );
 
 router.get(
@@ -91,6 +128,16 @@ router.patch(
   updateStageValidation,
   validate,
   applicationController.updateApplicationStage
+);
+
+router.patch(
+  '/:id/note',
+  verifyJWT,
+  roleGuard('recruiter'),
+  objectIdValidation,
+  noteValidation,
+  validate,
+  applicationController.updateApplicationNote
 );
 
 router.patch(
