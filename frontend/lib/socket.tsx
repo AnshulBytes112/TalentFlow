@@ -1,58 +1,71 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { io, Socket } from 'socket.io-client';
+import { getAccessToken } from '@/lib/authToken';
 
-interface SocketContextType {
+const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+type SocketContextValue = {
   socket: Socket | null;
-  isConnected: boolean;
-}
+};
 
-const SocketContext = createContext<SocketContextType>({
-  socket: null,
-  isConnected: false,
-});
+const SocketContext = createContext<SocketContextValue>({ socket: null });
 
-export const useSocket = () => useContext(SocketContext);
+let socketSingleton: Socket | null = null;
 
-export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
-  const { data: session } = useSession();
-  const accessToken = session?.user?.accessToken;
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+const getSocket = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
 
-  useEffect(() => {
-    if (!accessToken) return;
-
-    const socketInstance = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:5000', {
-      auth: {
-        token: accessToken,
-      },
+  if (!socketSingleton) {
+    socketSingleton = io(SOCKET_URL, {
+      autoConnect: false,
+      withCredentials: true,
+      transports: ['websocket'],
+      reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     });
+  }
 
-    socketInstance.on('connect', () => {
-      console.log('Connected to Socket.io server');
-      setIsConnected(true);
-    });
+  return socketSingleton;
+};
 
-    socketInstance.on('disconnect', () => {
-      console.log('Disconnected from Socket.io server');
-      setIsConnected(false);
-    });
+export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
+  const { data: session, status } = useSession();
+  const accessToken = (session?.user as any)?.accessToken || getAccessToken();
+  const [socket, setSocket] = useState<Socket | null>(null);
 
-    setSocket(socketInstance);
+  useEffect(() => {
+    const instance = getSocket();
+    setSocket(instance);
+
+    if (!instance) {
+      return;
+    }
+
+    if (status === 'authenticated' && accessToken) {
+      instance.auth = { token: accessToken };
+      if (!instance.connected) {
+        instance.connect();
+      }
+    } else if (instance.connected) {
+      instance.disconnect();
+    }
 
     return () => {
-      socketInstance.disconnect();
+      instance.disconnect();
     };
-  }, [accessToken]);
+  }, [accessToken, status]);
 
-  return (
-    <SocketContext.Provider value={{ socket, isConnected }}>
-      {children}
-    </SocketContext.Provider>
-  );
+  const value = useMemo(() => ({ socket }), [socket]);
+
+  return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 };
+
+export const useSocket = () => useContext(SocketContext).socket;
+
+export { getSocket };

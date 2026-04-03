@@ -58,7 +58,7 @@ const updateProfile = asyncHandler(async (req, res) => {
 
     if (role === ROLES.JOBSEEKER) {
         // Jobseeker: update bio, phone, location, skills, experience
-        const allowedFields = ['bio', 'phone', 'location', 'skills', 'experience', 'education', 'socialLinks', 'resumeUrl'];
+        const allowedFields = ['bio', 'phone', 'location', 'skills', 'experience', 'experienceYears', 'education', 'socialLinks', 'resumeUrl'];
         allowedFields.forEach(field => {
             if (updateData[field] !== undefined) {
                 profileUpdate[`profile.${field}`] = updateData[field];

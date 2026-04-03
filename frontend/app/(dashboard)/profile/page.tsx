@@ -48,6 +48,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<any>({ skills: [], experience: [], education: [] });
+  const [skillDraft, setSkillDraft] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [uploadModal, setUploadModal] = useState<'resume' | 'avatar' | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -119,6 +120,7 @@ export default function ProfilePage() {
         'bio',
         'phone',
         'location',
+        'experienceYears',
         'skills',
         'experience',
         'education',
@@ -164,6 +166,7 @@ export default function ProfilePage() {
           initialData[field] = normalizedProfile[field] || '';
         }
       });
+      initialData.experienceYears = normalizedProfile.experienceYears ?? 0;
       setFormData(initialData);
     } catch (error) {
       toast.error('Failed to load profile');
@@ -286,6 +289,23 @@ export default function ProfilePage() {
     handleInputChange('education', current);
   };
 
+  const addSkill = () => {
+    const value = skillDraft.trim();
+    if (!value) return;
+    const current = Array.isArray(formData.skills) ? formData.skills : [];
+    if (current.some((skill: string) => skill.toLowerCase() === value.toLowerCase())) {
+      setSkillDraft('');
+      return;
+    }
+    handleInputChange('skills', [...current, value]);
+    setSkillDraft('');
+  };
+
+  const removeSkill = (skillToRemove: string) => {
+    const current = Array.isArray(formData.skills) ? formData.skills : [];
+    handleInputChange('skills', current.filter((skill: string) => skill !== skillToRemove));
+  };
+
 
   const profileCompletion = useMemo(() => {
     if (!profile || !session?.user?.role) return 0;
@@ -338,8 +358,14 @@ export default function ProfilePage() {
   if (status === 'loading' || isLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 animate-spin text-accent-primary" />
+        <div className="mx-auto max-w-4xl space-y-6">
+          <div className="h-14 w-64 rounded-2xl bg-bg-secondary/60 animate-pulse" />
+          <div className="h-28 rounded-3xl bg-bg-secondary/60 animate-pulse" />
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="h-56 rounded-3xl bg-bg-secondary/60 animate-pulse" />
+            <div className="h-56 rounded-3xl bg-bg-secondary/60 animate-pulse" />
+          </div>
+          <div className="h-80 rounded-3xl bg-bg-secondary/60 animate-pulse" />
         </div>
       </DashboardLayout>
     );
@@ -463,6 +489,15 @@ export default function ProfilePage() {
                       </Badge>
                     </>
                   )}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Badge variant="default" className="uppercase px-4 py-1 text-sm font-black">
+                      {session.user.role}
+                    </Badge>
+                    <Button variant="ghost" size="sm" onClick={() => setUploadModal('avatar')}>
+                      <Upload size={16} />
+                      {session.user.role === ROLES.RECRUITER ? 'Upload Company Logo' : 'Upload Avatar'}
+                    </Button>
+                  </div>
                   {profile?.bio && (
                     <p className="text-text-secondary leading-relaxed">{safeString(profile.bio)}</p>
                   )}
@@ -638,6 +673,41 @@ export default function ProfilePage() {
                   </div>
                 </CardContent>
               </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Briefcase size={20} />
+                    Experience
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {session.user.role === ROLES.JOBSEEKER ? (
+                    isEditing ? (
+                      <div>
+                        <label htmlFor="experienceYears" className="block text-sm font-bold text-white mb-2">Years of experience</label>
+                        <Input
+                          id="experienceYears"
+                          type="number"
+                          min={0}
+                          value={safeString(formData.experienceYears)}
+                          onChange={(e) => handleInputChange('experienceYears', Number(e.target.value))}
+                          label="Years of Experience"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-text-secondary">
+                        <Briefcase size={18} className="text-accent-primary" />
+                        <span>{profile?.experienceYears ?? 0} years</span>
+                      </div>
+                    )
+                  ) : (
+                    <div className="flex items-center gap-2 text-text-secondary">
+                      <Briefcase size={18} className="text-accent-primary" />
+                      <span>Company profile and logo are managed from the avatar upload.</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </>
           )}
         </div>
@@ -653,15 +723,44 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4 pt-0">
               <div>
-                <label htmlFor="skills" className="block text-sm font-bold text-white mb-2">Skills (comma separated)</label>
-                <Input
-                  id="skills"
-                  placeholder="React, Node.js, TypeScript, AWS..."
-                  value={Array.isArray(formData.skills) ? formData.skills.filter((s: any) => typeof s === 'string').join(', ') : ''}
-                  onChange={(e) => handleInputChange('skills', e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean))}
-                  disabled={!isEditing}
-                  label="Skills"
-                />
+                <label htmlFor="skills" className="block text-sm font-bold text-white mb-2">Skills</label>
+                <div className="rounded-2xl border border-border bg-bg-secondary/40 p-4 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {(Array.isArray(formData.skills) ? formData.skills : []).map((skill: string) => (
+                      <button
+                        key={skill}
+                        type="button"
+                        onClick={() => isEditing && removeSkill(skill)}
+                        className="inline-flex items-center gap-2 rounded-full border border-accent-primary/20 bg-accent-primary/10 px-3 py-1 text-xs font-bold text-accent-primary"
+                      >
+                        {skill}
+                        {isEditing && <X size={12} />}
+                      </button>
+                    ))}
+                  </div>
+                  {isEditing ? (
+                    <div className="flex gap-3">
+                      <Input
+                        id="skills"
+                        placeholder="Add a skill and press Enter"
+                        value={skillDraft}
+                        onChange={(e) => setSkillDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addSkill();
+                          }
+                        }}
+                        label="Add Skill"
+                      />
+                      <Button type="button" variant="outline" onClick={addSkill}>
+                        Add
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-text-tertiary">Click edit to add or remove skills.</p>
+                  )}
+                </div>
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">

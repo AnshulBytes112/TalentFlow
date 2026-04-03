@@ -234,6 +234,24 @@ exports.getAdminAnalytics = asyncHandler(async (req, res) => {
     { $sort: { _id: 1 } }
   ]);
 
+  const newUsersLast30ByRole = await User.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          role: '$role'
+        },
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { '_id.date': 1 } }
+  ]);
+
   // 4. Applications Last 30 Days
   const appsLast30 = await Application.aggregate([
     {
@@ -309,6 +327,7 @@ exports.getAdminAnalytics = asyncHandler(async (req, res) => {
       activeJobs,
       totalApplications,
       newUsersLast30Days: newUsersLast30,
+      newUsersLast30DaysByRole: newUsersLast30ByRole,
       applicationsLast30Days: appsLast30,
       topRecruiters,
       topSkillsInDemand: topSkills,

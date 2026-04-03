@@ -8,7 +8,7 @@ export default withAuth(
 
     // Redirect authenticated users away from auth pages
     if (token && (pathname.startsWith('/login') || pathname.startsWith('/register'))) {
-      const redirectPath = token.role === 'recruiter' ? '/recruiter' : token.role === 'admin' ? '/dashboard' : '/jobseeker';
+      const redirectPath = token.role === 'recruiter' ? '/recruiter' : token.role === 'admin' ? '/admin' : '/jobseeker';
       return NextResponse.redirect(new URL(redirectPath, req.url));
     }
 
@@ -16,9 +16,21 @@ export default withAuth(
     if (pathname.startsWith('/dashboard')) {
       const subPath = pathname.replace('/dashboard', ''); // e.g. /jobseeker/applications
 
-      // Allow admins to access /dashboard and /dashboard/admin/* directly
+      // Allow admins to access /admin/* directly
       if (token?.role === 'admin') {
-        return NextResponse.next();
+        if (subPath === '/profile') {
+          return NextResponse.redirect(new URL('/profile', req.url));
+        }
+
+        if (!subPath || subPath === '/') {
+          return NextResponse.redirect(new URL('/admin', req.url));
+        }
+
+        if (subPath.startsWith('/admin')) {
+          return NextResponse.redirect(new URL(subPath, req.url));
+        }
+
+        return NextResponse.redirect(new URL(`/admin${subPath}`, req.url));
       }
 
       const roleBase = token?.role === 'recruiter' ? '/recruiter' : '/jobseeker';
@@ -34,6 +46,9 @@ export default withAuth(
     }
 
     // Role-based route guard
+    if (pathname.startsWith('/admin') && token?.role !== 'admin') {
+      return NextResponse.redirect(new URL(token?.role === 'recruiter' ? '/recruiter' : '/jobseeker', req.url));
+    }
     if (pathname.startsWith('/jobseeker') && token?.role !== 'jobseeker' && token?.role !== 'admin') {
       return NextResponse.redirect(new URL('/recruiter', req.url));
     }
@@ -61,5 +76,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/jobseeker/:path*', '/recruiter/:path*', '/profile', '/notifications', '/login', '/register'],
+  matcher: ['/dashboard/:path*', '/admin/:path*', '/jobseeker/:path*', '/recruiter/:path*', '/profile', '/notifications', '/login', '/register'],
 };

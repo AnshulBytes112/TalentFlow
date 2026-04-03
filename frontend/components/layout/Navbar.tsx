@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, User, LogOut, ChevronDown, Menu, X, CheckSquare } from 'lucide-react';
+import { Bell, User, LogOut, ChevronDown, Menu, CheckSquare } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
-import { useSocket } from '@/lib/socket';
+import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 import api from '@/lib/axios';
 import Button from '@/components/ui/Button';
@@ -15,36 +15,38 @@ import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 
 interface UINotification {
-  id: string;
+  _id: string;
   title: string;
   message: string;
-  time: string;
-  read: boolean;
+  type: string;
+  status: 'unread' | 'read' | 'archived';
+  createdAt: string;
+  data?: {
+    url?: string;
+    actionText?: string;
+  };
 }
 
 
 const Navbar = () => {
   const { data: session, status } = useSession();
   const accessToken = session?.user?.accessToken;
-  const { socket } = useSocket();
+  const { unreadCount, notifications, setNotifications, markAllRead: markAllReadInStore } = useNotifications();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0); 
-
-  // Notification state
-  const [notifications, setNotifications] = useState<UINotification[]>([]);
-  const lastLoadedTokenRef = useRef<string | null>(null);
-  const hasLoadedNotificationListRef = useRef(false);
+  const [hasLoadedNotificationList, setHasLoadedNotificationList] = useState(false);
 
   const notificationsHref = '/notifications';
 
   const mapNotification = (n: any): UINotification => ({
-    id: n._id || n.id,
+    _id: n._id || n.id,
     title: n.title || 'Notification',
     message: n.message || '',
-    time: n.createdAt ? formatDistanceToNow(new Date(n.createdAt), { addSuffix: true }) : 'Just now',
-    read: n.status === 'read' || n.read === true,
+    type: n.type || 'system',
+    status: n.status || 'unread',
+    createdAt: n.createdAt || new Date().toISOString(),
+    data: n.data || {},
   });
 
   const loadNotificationList = async () => {
@@ -54,28 +56,17 @@ const Navbar = () => {
       const list = listRes?.data?.data?.notifications || [];
 
       setNotifications(list.map(mapNotification));
-      hasLoadedNotificationListRef.current = true;
+      setHasLoadedNotificationList(true);
     } catch (error) {
       // Silent fallback: navbar should still render if notifications endpoint fails.
       setNotifications([]);
     }
   };
 
-  const loadUnreadCount = async () => {
-    try {
-      const unreadRes = await api.get('/api/notifications/unread-count');
-      const unread = unreadRes?.data?.data?.count || 0;
-      setUnreadCount(unread);
-    } catch (error) {
-      setUnreadCount(0);
-    }
-  };
-
   const markAllRead = async () => {
     try {
       await api.patch('/api/notifications/read-all');
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
+      markAllReadInStore();
       toast.success('All notifications marked as read');
     } catch (error) {
       toast.error('Failed to mark notifications as read');
@@ -84,62 +75,21 @@ const Navbar = () => {
 
   useEffect(() => {
     if (!accessToken) {
-      lastLoadedTokenRef.current = null;
-      hasLoadedNotificationListRef.current = false;
+      setHasLoadedNotificationList(false);
       setNotifications([]);
-      setUnreadCount(0);
       return;
     }
 
-    if (lastLoadedTokenRef.current === accessToken) {
-      return;
-    }
-
-    lastLoadedTokenRef.current = accessToken;
-    hasLoadedNotificationListRef.current = false;
-    void loadUnreadCount();
+    setHasLoadedNotificationList(false);
   }, [accessToken]);
 
   useEffect(() => {
-    if (!isNotifOpen || !accessToken || hasLoadedNotificationListRef.current) {
+    if (!isNotifOpen || !accessToken || hasLoadedNotificationList) {
       return;
     }
 
     void loadNotificationList();
-  }, [isNotifOpen, accessToken]);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleIncomingNotification = (notif: any) => {
-      const next = mapNotification({
-        id: notif.id,
-        title: notif.title,
-        message: notif.message,
-        createdAt: notif.createdAt,
-        status: 'unread',
-      });
-
-      setNotifications(prev => [next, ...prev].slice(0, 5));
-      setUnreadCount(prev => prev + 1);
-      toast.success(notif.title || 'New Notification', {
-        icon: '🔔',
-        style: {
-          background: '#0A0A0F',
-          color: '#6EE7B7',
-          border: '1px solid rgba(110, 231, 183, 0.3)',
-        }
-      });
-    };
-
-    socket.on('notification:new', handleIncomingNotification);
-    socket.on('notification', handleIncomingNotification);
-
-    return () => {
-      socket.off('notification:new', handleIncomingNotification);
-      socket.off('notification', handleIncomingNotification);
-    };
-  }, [socket]);
+  }, [isNotifOpen, accessToken, hasLoadedNotificationList]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -205,13 +155,15 @@ const Navbar = () => {
                           <div className="p-4 text-xs text-text-tertiary">No notifications yet.</div>
                         )}
                         {notifications.map(n => (
-                          <div key={n.id} className={cn(
+                          <div key={n._id} className={cn(
                             "p-4 border-b border-border/50 hover:bg-elevated/30 transition-colors cursor-pointer group",
-                            !n.read && "bg-accent-primary/5"
+                            n.status === 'unread' && "bg-accent-primary/5"
                           )}>
                             <div className="flex justify-between items-start mb-1">
                               <span className="text-sm font-bold text-text-primary group-hover:text-accent-primary transition-colors">{n.title}</span>
-                              <span className="text-[10px] text-text-tertiary font-mono">{n.time}</span>
+                              <span className="text-[10px] text-text-tertiary font-mono">
+                                {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                              </span>
                             </div>
                             <p className="text-xs text-text-secondary leading-relaxed">{n.message}</p>
                           </div>
@@ -228,7 +180,7 @@ const Navbar = () => {
               {/* Profile Dropdown */}
               <div className="relative">
                 <button 
-                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                          onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center gap-3 p-1 pr-3 rounded-full bg-elevated/30 border border-border hover:border-accent-primary/30 transition-all duration-300"
                 >
                   <Avatar initials={session.user?.name?.substring(0, 2) || 'JD'} size="sm" />

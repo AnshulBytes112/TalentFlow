@@ -11,12 +11,10 @@ import {
   User, 
   BarChart3, 
   Users, 
-  Settings, 
   LogOut, 
   ChevronLeft, 
   Search,
   PlusCircle,
-  Bell
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
@@ -52,11 +50,11 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       { label: 'Profile', href: '/profile', icon: User },
     ],
     admin: [
-      { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Users', href: '/dashboard/admin/users', icon: Users },
-      { label: 'Jobs', href: '/dashboard/admin/jobs', icon: Briefcase },
-      { label: 'Applications', href: '/dashboard/admin/applications', icon: FileText },
-      { label: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 },
+      { label: 'Overview', href: '/admin', icon: LayoutDashboard },
+      { label: 'Users', href: '/admin/users', icon: Users },
+      { label: 'Jobs', href: '/admin/jobs', icon: Briefcase },
+      { label: 'Applications', href: '/admin/applications', icon: FileText },
+      { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     ],
   };
 
@@ -69,7 +67,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         initial={false}
         animate={{ width: isCollapsed ? 80 : 280 }}
         transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-        className="fixed left-0 top-0 bottom-0 z-40 bg-bg-secondary border-r border-border flex flex-col pt-24 pb-6 px-4"
+        className="fixed left-0 top-0 bottom-0 z-40 hidden bg-bg-secondary border-r border-border flex-col pt-24 pb-6 px-4 md:flex"
       >
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -148,13 +146,32 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Main Content Area */}
       <main className={cn(
-        "flex-1 transition-all duration-300 min-h-screen",
-        isCollapsed ? "pl-20" : "pl-[280px]"
+        "flex-1 transition-all duration-300 min-h-screen pb-24 md:pb-0",
+        isCollapsed ? "pl-0 md:pl-20" : "pl-0 md:pl-[280px]"
       )}>
         <div className="pt-24 p-8 max-w-7xl mx-auto">
           {children}
         </div>
       </main>
+
+      <nav className="fixed bottom-4 left-4 right-4 z-40 grid grid-cols-4 gap-2 rounded-3xl border border-border bg-bg-secondary/95 p-2 shadow-2xl backdrop-blur-xl md:hidden">
+        {currentNav.slice(0, 4).map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors',
+                isActive ? 'bg-accent-primary/10 text-accent-primary' : 'text-text-tertiary'
+              )}
+            >
+              <item.icon size={18} />
+              <span className="truncate">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 };

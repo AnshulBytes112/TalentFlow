@@ -38,7 +38,13 @@ export default function AdminAnalyticsPage() {
             <CardTitle>Overview</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading && <p className="text-sm text-text-tertiary">Loading...</p>}
+            {loading && (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="h-24 rounded-2xl bg-bg-secondary/60 animate-pulse" />
+                ))}
+              </div>
+            )}
             {!loading && data && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-bg-secondary rounded-lg border border-border">
