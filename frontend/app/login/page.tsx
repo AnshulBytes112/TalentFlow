@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Github } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { signIn, useSession } from 'next-auth/react';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -210,23 +210,6 @@ const LoginPage = () => {
               Sign In to TalentFlow
             </Button>
           </form>
-
-          <div className="flex items-center gap-4">
-            <span className="h-px flex-1 bg-border" />
-            <span className="shrink-0 text-[11px] uppercase tracking-widest font-black text-text-tertiary leading-none">
-              Or continue with
-            </span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-             <Button variant="ghost" className="border border-border py-3">
-                <Github size={18} className="mr-2" /> Github
-             </Button>
-             <Button variant="ghost" className="border border-border py-3">
-                <Github size={18} className="mr-2" /> Google
-             </Button>
-          </div>
 
           <p className="text-center text-sm text-text-tertiary font-medium">
             Don&apos;t have an account?{' '}
