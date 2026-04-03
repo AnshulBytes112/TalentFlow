@@ -7,6 +7,35 @@ const BACKEND_API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   'http://localhost:5000';
 
+const extractApiErrorMessage = (payload: any, fallback = 'Login failed') => {
+  if (!payload || typeof payload !== 'object') {
+    return fallback;
+  }
+
+  if (typeof payload.message === 'string' && payload.message.trim()) {
+    if (payload.message.toLowerCase().includes('validation')) {
+      const first = Array.isArray(payload.errors) ? payload.errors[0] : null;
+      if (typeof first === 'string' && first.trim()) {
+        return first;
+      }
+      if (first && typeof first.message === 'string' && first.message.trim()) {
+        return first.message;
+      }
+    }
+    return payload.message;
+  }
+
+  const first = Array.isArray(payload.errors) ? payload.errors[0] : null;
+  if (typeof first === 'string' && first.trim()) {
+    return first;
+  }
+  if (first && typeof first.message === 'string' && first.message.trim()) {
+    return first.message;
+  }
+
+  return fallback;
+};
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -38,7 +67,7 @@ export const authOptions: NextAuthOptions = {
           }
           return null;
         } catch (error: any) {
-          const message = error.response?.data?.message || 'Login failed';
+          const message = extractApiErrorMessage(error.response?.data, 'Login failed');
           throw new Error(message);
         }
       },

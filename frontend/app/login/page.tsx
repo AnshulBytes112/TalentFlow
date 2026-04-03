@@ -11,6 +11,29 @@ import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 
+const normalizeLoginError = (rawError?: string | null) => {
+  if (!rawError) {
+    return 'Unable to login. Please try again.';
+  }
+
+  const decodedError = decodeURIComponent(rawError).trim();
+  const lowerError = decodedError.toLowerCase();
+
+  if (lowerError.includes('validation')) {
+    return 'Please check your email and password and try again.';
+  }
+
+  if (decodedError === 'CredentialsSignin') {
+    return 'Invalid email or password';
+  }
+
+  if (decodedError === 'Configuration') {
+    return 'Login is temporarily unavailable. Please try again shortly.';
+  }
+
+  return decodedError;
+};
+
 const LoginPage = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -38,8 +61,9 @@ const LoginPage = () => {
       });
 
       if (result?.error) {
-        toast.error(result.error || 'Invalid credentials');
-        setErrors({ auth: result.error });
+        const message = normalizeLoginError(result.error);
+        toast.error(message);
+        setErrors({ auth: message });
       } else {
         toast.success('Welcome back!');
         router.push('/dashboard');

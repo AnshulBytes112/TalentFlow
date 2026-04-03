@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -12,6 +13,8 @@ const swaggerUi = require('swagger-ui-express');
 const http = require('http');
 const socketService = require('./services/socketService');
 
+// Load env vars before importing routes/controllers that may read process.env at module scope
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
@@ -24,9 +27,6 @@ const analyticsRoutes = require('./routes/analytics.routes');
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
 const connectDB = require('./config/db');
-
-// Load env vars
-dotenv.config();
 
 // Create Express app
 const app = express();

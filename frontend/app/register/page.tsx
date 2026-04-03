@@ -12,6 +12,30 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import {Card} from '@/components/ui/Card';
 
+const extractApiErrorMessage = (payload: any, fallback = 'Registration failed') => {
+  if (!payload || typeof payload !== 'object') {
+    return fallback;
+  }
+
+  const first = Array.isArray(payload.errors) ? payload.errors[0] : null;
+  const firstErrorMessage = typeof first === 'string'
+    ? first
+    : (first && typeof first.message === 'string' ? first.message : '');
+
+  if (typeof payload.message === 'string' && payload.message.trim()) {
+    if (payload.message.toLowerCase().includes('validation') && firstErrorMessage) {
+      return firstErrorMessage;
+    }
+    return payload.message;
+  }
+
+  if (firstErrorMessage) {
+    return firstErrorMessage;
+  }
+
+  return fallback;
+};
+
 const RegisterPage = () => {
   const router = useRouter();
   const { status } = useSession();
@@ -77,7 +101,7 @@ const RegisterPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
+        throw new Error(extractApiErrorMessage(data, 'Registration failed'));
       }
 
       toast.success('Account created! Please log in.');

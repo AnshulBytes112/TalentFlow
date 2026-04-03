@@ -18,22 +18,25 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const [hasValue, setHasValue] = useState(!!value);
     const internalRef = useRef<HTMLInputElement | null>(null);
 
-    const setRefs = (el: HTMLInputElement | null) => {
-      internalRef.current = el;
+    const setRefs = (element: HTMLInputElement | null) => {
+      internalRef.current = element;
+
       if (typeof ref === 'function') {
-        ref(el);
+        ref(element);
       } else if (ref) {
-        (ref as React.MutableRefObject<HTMLInputElement | null>).current = el;
+        (ref as React.MutableRefObject<HTMLInputElement | null>).current = element;
       }
     };
 
     const syncAutofillToState = () => {
       const currentValue = internalRef.current?.value || '';
-      if (currentValue && currentValue !== String(value ?? '')) {
-        setHasValue(true);
+
+      if (currentValue !== String(value ?? '')) {
+        setHasValue(!!currentValue);
+
         onChange?.({
           target: { value: currentValue },
-          currentTarget: { value: currentValue }
+          currentTarget: { value: currentValue },
         } as React.ChangeEvent<HTMLInputElement>);
       }
     };
@@ -43,35 +46,16 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     }, [value]);
 
     useLayoutEffect(() => {
-      // On first paint, pick up browser-injected values (autofill/password manager)
-      // so label and typed value don't overlap visually.
       syncAutofillToState();
     }, []);
 
     useEffect(() => {
-      // Browser/password-manager autofill often updates DOM value without firing React events.
-      const t1 = window.setTimeout(syncAutofillToState, 60);
-      const t2 = window.setTimeout(syncAutofillToState, 400);
-
+      const timeoutId = window.setTimeout(syncAutofillToState, 75);
       const intervalId = window.setInterval(syncAutofillToState, 250);
-      const stopPollingId = window.setTimeout(() => {
-        window.clearInterval(intervalId);
-      }, 6000);
-
-      const observer = new MutationObserver(syncAutofillToState);
-      if (internalRef.current) {
-        observer.observe(internalRef.current, {
-          attributes: true,
-          attributeFilter: ['value']
-        });
-      }
 
       return () => {
-        window.clearTimeout(t1);
-        window.clearTimeout(t2);
-        window.clearTimeout(stopPollingId);
+        window.clearTimeout(timeoutId);
         window.clearInterval(intervalId);
-        observer.disconnect();
       };
     }, [value]);
 
@@ -106,11 +90,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               setHasValue(!!e.target.value);
               onChange?.(e);
             }}
+            onInput={syncAutofillToState}
             onFocus={handleFocus}
             onBlur={handleBlur}
             className={cn(
               'peer relative z-20 w-full h-full bg-transparent text-text-primary outline-none placeholder:opacity-0 caret-accent-primary',
-              'pt-6 pb-1', // Extra top padding keeps text clear of floating label
+              'pt-6 pb-1',
               leftIcon ? 'pl-11' : 'pl-4',
               rightIcon ? 'pr-11' : 'pr-4',
               error && 'text-accent-danger',

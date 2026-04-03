@@ -1,16 +1,30 @@
 const nodemailer = require('nodemailer');
+const dotenv = require('dotenv');
+const path = require('path');
 
-const SMTP_HOST = process.env.SMTP_HOST || process.env.EMAIL_HOST;
-const SMTP_PORT = process.env.SMTP_PORT || process.env.EMAIL_PORT;
-const SMTP_SECURE = process.env.SMTP_SECURE || process.env.EMAIL_SECURE;
-const SMTP_USER = process.env.SMTP_USER || process.env.EMAIL_USER;
-const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
+const firstNonEmpty = (...values) => values.find((value) => value !== undefined && value !== null && String(value).trim() !== '');
+
+// Prefer EMAIL_* from project .env; use SMTP_* only as fallback aliases.
+const SMTP_HOST = firstNonEmpty(process.env.EMAIL_HOST, process.env.SMTP_HOST, 'smtp.gmail.com');
+const SMTP_PORT = Number(firstNonEmpty(process.env.EMAIL_PORT, process.env.SMTP_PORT, 587));
+const SMTP_SECURE = String(firstNonEmpty(process.env.EMAIL_SECURE, process.env.SMTP_SECURE, 'false')).toLowerCase() === 'true';
+const SMTP_USER = firstNonEmpty(process.env.EMAIL_USER, process.env.SMTP_USER);
+const SMTP_PASS = firstNonEmpty(process.env.EMAIL_PASS, process.env.SMTP_PASS);
+
+const assertSmtpCredentials = () => {
+  if (!SMTP_USER || !SMTP_PASS) {
+    throw new Error('Email credentials are missing. Set EMAIL_USER and EMAIL_PASS in backend/.env');
+  }
+};
 
 // Create transporter
+assertSmtpCredentials();
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
   port: SMTP_PORT,
-  secure: SMTP_SECURE === 'true',
+  secure: SMTP_SECURE,
   auth: {
     user: SMTP_USER,
     pass: SMTP_PASS
@@ -270,22 +284,80 @@ const sendPendingApplicationsReminder = async (recruiter, count) => {
  * Send Job Updated Notification to Applicant
  */
 const sendJobUpdatedEmail = async (applicant, job, updatedFields = []) => {
-  const fieldsHtml = updatedFields.length > 0
-    ? `<p><strong>What changed:</strong> ${updatedFields.join(', ')}</p>`
+  const salaryMin = job?.salary?.min;
+  const salaryMax = job?.salary?.max;
+  const currency = job?.salary?.currency || 'USD';
+
+  const formatMoney = (value) => {
+    if (typeof value !== 'number') return null;
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value);
+  };
+
+  const salaryHtml = job?.isUnpaid
+    ? 'Unpaid position'
+    : (() => {
+        const min = formatMoney(salaryMin);
+        const max = formatMoney(salaryMax);
+        if (min && max) return `${min} - ${max}`;
+        if (min) return `${min}+`;
+        if (max) return `Up to ${max}`;
+        return 'Not specified';
+      })();
+
+  const deadline = job?.deadline ? new Date(job.deadline).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not specified';
+  const location = job?.location || 'Not specified';
+  const companyName = job?.company?.name || job?.companyName || 'Not specified';
+  const workMode = job?.workMode || 'Not specified';
+  const jobType = job?.type || 'Not specified';
+
+  const changedFieldsHtml = updatedFields.length > 0
+    ? `<ul style="margin: 8px 0 0 18px; padding: 0; color: #374151;">${updatedFields.map((field) => `<li style="margin-bottom: 6px;">${field}</li>`).join('')}</ul>`
+    : '<p style="margin: 8px 0 0; color: #374151;">The recruiter made updates to this listing.</p>';
+
+  const skillsHtml = Array.isArray(job?.skills) && job.skills.length
+    ? `<p style="margin: 0;"><strong>Skills:</strong> ${job.skills.slice(0, 10).join(', ')}</p>`
+    : '';
+
+  const requirementsHtml = Array.isArray(job?.requirements) && job.requirements.length
+    ? `<p style="margin: 0;"><strong>Top requirements:</strong> ${job.requirements.slice(0, 5).join(', ')}</p>`
+    : '';
+
+  const descriptionSnippet = typeof job?.description === 'string' && job.description.trim()
+    ? `${job.description.trim().slice(0, 320)}${job.description.trim().length > 320 ? '...' : ''}`
     : '';
 
   const mailOptions = {
     from: FROM_EMAIL,
     to: applicant.email,
-    subject: `Job Update: ${job.title}`,
+    subject: `Job listing updated: ${job.title}`,
     html: `
-      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px;">
-        <h2 style="color: #2b6cb0;">A job you applied to has been updated</h2>
-        <p>Hi ${applicant.firstName}, the recruiter has posted updates for <strong>${job.title}</strong>.</p>
-        ${fieldsHtml}
-        <p>Please review the latest details to ensure the role still matches your preferences.</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.FRONTEND_URL}/jobs/${job._id}" style="background-color: #2b6cb0; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Updated Job</a>
+      <div style="font-family: Arial, sans-serif; max-width: 680px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background: #ffffff;">
+        <h2 style="color: #1d4ed8; margin-top: 0;">A job you applied to was updated</h2>
+        <p style="color: #111827; line-height: 1.55;">Hi ${applicant.firstName},</p>
+        <p style="color: #111827; line-height: 1.55;">The recruiter has posted updates to <strong>${job.title}</strong>. Please review the latest details below and confirm this opportunity still matches your preferences.</p>
+
+        <div style="margin: 18px 0; padding: 16px; border-radius: 10px; background: #f8fafc; border: 1px solid #e5e7eb; color: #111827;">
+          <p style="margin: 0 0 10px;"><strong>Job:</strong> ${job.title}</p>
+          <p style="margin: 0 0 10px;"><strong>Company:</strong> ${companyName}</p>
+          <p style="margin: 0 0 10px;"><strong>Location:</strong> ${location}</p>
+          <p style="margin: 0 0 10px;"><strong>Type:</strong> ${jobType}</p>
+          <p style="margin: 0 0 10px;"><strong>Work mode:</strong> ${workMode}</p>
+          <p style="margin: 0 0 10px;"><strong>Compensation:</strong> ${salaryHtml}</p>
+          <p style="margin: 0 0 10px;"><strong>Application deadline:</strong> ${deadline}</p>
+          ${skillsHtml}
+          ${requirementsHtml}
+          ${descriptionSnippet ? `<p style="margin: 10px 0 0;"><strong>Updated description preview:</strong> ${descriptionSnippet}</p>` : ''}
+        </div>
+
+        <div style="margin: 16px 0; padding: 14px; border-left: 4px solid #1d4ed8; background: #eff6ff;">
+          <p style="margin: 0; font-weight: 700; color: #1e40af;">What changed</p>
+          ${changedFieldsHtml}
+        </div>
+
+        <p style="color: #111827; line-height: 1.55;">If this role still fits your goals, keep monitoring your application status in the portal for upcoming updates.</p>
+
+        <div style="text-align: center; margin: 26px 0 12px;">
+          <a href="${process.env.FRONTEND_URL}/jobs/${job._id}" style="background-color: #1d4ed8; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 700; display: inline-block;">Review Updated Job</a>
         </div>
       </div>
     `

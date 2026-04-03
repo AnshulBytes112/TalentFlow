@@ -1,5 +1,26 @@
 const ApiError = require('../utils/ApiError');
 
+const deriveValidationMessage = (errors, fallback = 'Validation failed') => {
+  if (!Array.isArray(errors) || errors.length === 0) {
+    return fallback;
+  }
+
+  const first = errors[0];
+  if (!first) {
+    return fallback;
+  }
+
+  if (typeof first === 'string') {
+    return first;
+  }
+
+  if (typeof first === 'object' && typeof first.message === 'string' && first.message.trim()) {
+    return first.message;
+  }
+
+  return fallback;
+};
+
 /**
  * Global Express error handler for MongoDB + Mongoose stack
  */
@@ -52,7 +73,7 @@ const errorHandler = (err, req, res, next) => {
     }));
     return res.status(400).json({
       success: false,
-      message: 'Validation failed',
+      message: deriveValidationMessage(fieldErrors, err.message || 'Validation failed'),
       errors: fieldErrors
     });
   }
@@ -91,10 +112,11 @@ const errorHandler = (err, req, res, next) => {
 
   // 9. express-validator errors (err.type === 'validation')
   if (err.type === 'validation') {
+    const validationErrors = Array.isArray(err.errors) ? err.errors : [];
     return res.status(400).json({
       success: false,
-      message: 'Validation failed',
-      errors: err.errors
+      message: deriveValidationMessage(validationErrors, err.message || 'Validation failed'),
+      errors: validationErrors
     });
   }
 
