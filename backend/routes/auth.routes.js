@@ -67,6 +67,14 @@ const forgotPasswordValidation = [
 ];
 
 const resetPasswordValidation = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email address'),
+  body('otp')
+    .trim()
+    .matches(/^\d{6}$/)
+    .withMessage('OTP must be a 6-digit code'),
   body('password')
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters long')
@@ -120,11 +128,11 @@ router.post(
 );
 
 router.post(
-  '/reset-password/:token',
+  '/reset-password-with-otp',
   apiLimiter,
   resetPasswordValidation,
   validate,
-  authController.resetPassword
+  authController.resetPasswordWithOtp
 );
 
 router.get(

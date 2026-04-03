@@ -32,6 +32,14 @@ const nextConfig = {
         destination: `${backendUrl}/api/auth/login`,
       },
       {
+        source: '/api/auth/forgot-password',
+        destination: `${backendUrl}/api/auth/forgot-password`,
+      },
+      {
+        source: '/api/auth/reset-password-with-otp',
+        destination: `${backendUrl}/api/auth/reset-password-with-otp`,
+      },
+      {
         source: '/api/auth/me',
         destination: `${backendUrl}/api/auth/me`,
       },

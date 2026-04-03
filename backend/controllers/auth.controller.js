@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const RegistrationOtp = require('../models/RegistrationOtp');
+const PasswordResetOtp = require('../models/PasswordResetOtp');
 const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
@@ -8,14 +9,15 @@ const {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
-  generateRandomToken,
   hashToken,
   extractTokenFromHeader
 } = require('../utils/jwtUtils');
-const { sendVerificationEmail, sendPasswordResetEmail, sendRegistrationOtpEmail } = require('../services/emailService');
+const { sendVerificationEmail, sendPasswordResetEmail, sendRegistrationOtpEmail, sendPasswordResetOtpEmail } = require('../services/emailService');
 
 const REGISTRATION_OTP_TTL_MS = 10 * 60 * 1000;
 const MAX_REGISTRATION_OTP_ATTEMPTS = 5;
+const PASSWORD_RESET_OTP_TTL_MS = 10 * 60 * 1000;
+const MAX_PASSWORD_RESET_OTP_ATTEMPTS = 5;
 
 const generateSixDigitOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 
@@ -314,8 +316,10 @@ const forgotPassword = asyncHandler(async (req, res) => {
     throw ApiError.badRequest('Email is required');
   }
 
+  const normalizedEmail = String(email).trim().toLowerCase();
+
   // Find user (don't reveal if email exists)
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email: normalizedEmail });
   
   // Always return same message for security
   const message = 'If an account with that email exists, a password reset link has been sent.';
@@ -326,22 +330,29 @@ const forgotPassword = asyncHandler(async (req, res) => {
     );
   }
 
-  // Generate reset token
-  const resetToken = generateRandomToken();
-  const hashedResetToken = hashToken(resetToken);
-  const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  // OTP-based reset flow
+  const otp = generateSixDigitOtp();
+  const otpHash = hashToken(otp);
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_OTP_TTL_MS);
 
-  // Save token to user
-  user.passwordResetToken = hashedResetToken;
-  user.passwordResetExpires = resetTokenExpiry;
-  await user.save();
+  await PasswordResetOtp.findOneAndUpdate(
+    { email: normalizedEmail },
+    {
+      email: normalizedEmail,
+      otpHash,
+      expiresAt,
+      attempts: 0,
+      lastSentAt: new Date()
+    },
+    { upsert: true, setDefaultsOnInsert: true }
+  );
 
-  // Send reset email (async, don't block response)
+  // Send reset OTP email (async, don't block response)
   setImmediate(async () => {
     try {
-      await sendPasswordResetEmail(user, resetToken);
+      await sendPasswordResetOtpEmail(normalizedEmail, otp, user.firstName || 'there');
     } catch (error) {
-      console.error('Failed to send password reset email:', error);
+      console.error('Failed to send password reset OTP email:', error);
     }
   });
 
@@ -351,11 +362,16 @@ const forgotPassword = asyncHandler(async (req, res) => {
 });
 
 /**
- * Reset password
+ * Reset password with OTP
  */
-const resetPassword = asyncHandler(async (req, res) => {
-  const { token } = req.params;
-  const { password } = req.body;
+const resetPasswordWithOtp = asyncHandler(async (req, res) => {
+  const { email, otp, password } = req.body;
+
+  if (!email || !otp || !password) {
+    throw ApiError.badRequest('Email, OTP and new password are required');
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
 
   if (!password) {
     throw ApiError.badRequest('New password is required');
@@ -365,23 +381,40 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw ApiError.badRequest('Password must be at least 8 characters long');
   }
 
-  // Hash token and find user
-  const hashedToken = hashToken(token);
-  const user = await User.findOne({
-    passwordResetToken: hashedToken,
-    passwordResetExpires: { $gt: new Date() }
-  });
+  const user = await User.findOne({ email: normalizedEmail }).select('+refreshToken');
 
   if (!user) {
-    throw ApiError.badRequest('Invalid or expired reset token');
+    throw ApiError.badRequest('Invalid OTP or email');
+  }
+
+  const otpRecord = await PasswordResetOtp.findOne({ email: normalizedEmail }).select('+otpHash');
+  if (!otpRecord) {
+    throw ApiError.badRequest('Please request OTP first');
+  }
+
+  if (otpRecord.expiresAt < new Date()) {
+    await PasswordResetOtp.deleteOne({ _id: otpRecord._id });
+    throw ApiError.badRequest('OTP has expired. Please request a new OTP');
+  }
+
+  if (otpRecord.attempts >= MAX_PASSWORD_RESET_OTP_ATTEMPTS) {
+    await PasswordResetOtp.deleteOne({ _id: otpRecord._id });
+    throw ApiError.badRequest('Maximum OTP attempts exceeded. Please request a new OTP');
+  }
+
+  const submittedOtpHash = hashToken(String(otp).trim());
+  if (submittedOtpHash !== otpRecord.otpHash) {
+    otpRecord.attempts += 1;
+    await otpRecord.save();
+    throw ApiError.badRequest('Invalid OTP');
   }
 
   // Update password and clear reset fields
   user.password = password;
-  user.passwordResetToken = undefined;
-  user.passwordResetExpires = undefined;
   user.refreshToken = undefined; // Invalidate all existing refresh tokens
   await user.save();
+
+  await PasswordResetOtp.deleteOne({ _id: otpRecord._id });
 
   res.json(
     ApiResponse.success(null, 'Password reset successful')
@@ -454,7 +487,7 @@ module.exports = {
   refreshToken,
   logout,
   forgotPassword,
-  resetPassword,
+  resetPasswordWithOtp,
   getMe,
   verifyEmail
 };

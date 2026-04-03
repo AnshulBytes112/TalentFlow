@@ -113,6 +113,32 @@ const sendRegistrationOtpEmail = async (email, otp, firstName = 'there') => {
 };
 
 /**
+ * Send Password Reset OTP
+ */
+const sendPasswordResetOtpEmail = async (email, otp, firstName = 'there') => {
+  const mailOptions = {
+    from: FROM_EMAIL,
+    to: email,
+    subject: `Your ${APP_NAME} password reset OTP`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 620px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
+        <h2 style="margin-top: 0; color: #b91c1c;">Password reset OTP</h2>
+        <p>Hi ${firstName},</p>
+        <p>Use the OTP below to reset your password. This OTP is valid for <strong>10 minutes</strong>.</p>
+        <div style="margin: 24px 0; text-align: center;">
+          <div style="display: inline-block; font-size: 28px; letter-spacing: 10px; font-weight: 700; color: #111827; padding: 12px 20px; border: 1px dashed #94a3b8; border-radius: 8px; background: #f8fafc;">
+            ${otp}
+          </div>
+        </div>
+        <p>If you did not request this, please ignore this email and keep your account secure.</p>
+      </div>
+    `
+  };
+
+  return await transporter.sendMail(mailOptions);
+};
+
+/**
  * Send Password Reset Token
  */
 const sendPasswordReset = async (user, token) => {
@@ -401,6 +427,7 @@ module.exports = {
   sendEmailVerification,
   sendVerificationEmail,
   sendRegistrationOtpEmail,
+  sendPasswordResetOtpEmail,
   sendPasswordReset,
   sendPasswordResetEmail,
   sendApplicationReceived,
