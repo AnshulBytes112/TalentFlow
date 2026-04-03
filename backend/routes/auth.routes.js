@@ -30,7 +30,23 @@ const registerValidation = [
   body('role')
     .optional()
     .isIn(Object.values(ROLES))
-    .withMessage('Invalid role')
+    .withMessage('Invalid role'),
+  body('otp')
+    .trim()
+    .matches(/^\d{6}$/)
+    .withMessage('OTP must be a 6-digit code')
+];
+
+const sendRegistrationOtpValidation = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email address'),
+  body('firstName')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('First name must be between 1 and 50 characters')
 ];
 
 const loginValidation = [
@@ -59,6 +75,14 @@ const resetPasswordValidation = [
 ];
 
 // Routes
+router.post(
+  '/send-registration-otp',
+  authLimiter,
+  sendRegistrationOtpValidation,
+  validate,
+  authController.sendRegistrationOtp
+);
+
 router.post(
   '/register',
   authLimiter,

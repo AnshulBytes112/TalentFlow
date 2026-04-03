@@ -211,13 +211,12 @@ const LoginPage = () => {
             </Button>
           </form>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative z-10 flex justify-center text-xs uppercase tracking-widest font-black text-text-tertiary leading-none">
-              <span className="inline-flex bg-bg-primary px-4 py-1">Or continue with</span>
-            </div>
+          <div className="flex items-center gap-4">
+            <span className="h-px flex-1 bg-border" />
+            <span className="shrink-0 text-[11px] uppercase tracking-widest font-black text-text-tertiary leading-none">
+              Or continue with
+            </span>
+            <span className="h-px flex-1 bg-border" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

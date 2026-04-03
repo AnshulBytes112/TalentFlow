@@ -41,6 +41,8 @@ const RegisterPage = () => {
   const { status } = useSession();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
 
   React.useEffect(() => {
     if (status === 'authenticated') {
@@ -54,8 +56,37 @@ const RegisterPage = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    otp: '',
     role: '', // 'jobseeker' or 'recruiter'
   });
+
+  const handleSendOtp = async () => {
+    if (!formData.email) {
+      toast.error('Please enter your email first');
+      return;
+    }
+
+    setIsSendingOtp(true);
+    try {
+      const response = await fetch('/api/auth/send-registration-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, firstName: formData.firstName || 'there' }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(extractApiErrorMessage(data, 'Failed to send OTP'));
+      }
+
+      setOtpSent(true);
+      toast.success('OTP sent to your email');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send OTP');
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
 
   const passwordStrength = useMemo(() => {
     if (!formData.password) return { label: '', color: 'bg-border', width: '0%', score: 0 };
@@ -85,6 +116,17 @@ const RegisterPage = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!otpSent) {
+      toast.error('Please send OTP first');
+      return;
+    }
+
+    if (!formData.otp) {
+      toast.error('Please enter OTP');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -272,9 +314,34 @@ const RegisterPage = () => {
                     autoComplete="email"
                     leftIcon={<Mail size={18} />}
                     value={formData.email}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) => {
+                      const nextEmail = e.target.value;
+                      setFormData((prev) => ({ ...prev, email: nextEmail }));
+                      setOtpSent(false);
+                    }}
                     required
                   />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+                    <Input
+                      label="Email OTP"
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      value={formData.otp}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, otp: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-14 px-5"
+                      isLoading={isSendingOtp}
+                      onClick={handleSendOtp}
+                    >
+                      {otpSent ? 'Resend OTP' : 'Send OTP'}
+                    </Button>
+                  </div>
 
                   <div className="space-y-2">
                     <Input

@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const RegistrationOtp = require('../models/RegistrationOtp');
 const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
@@ -11,18 +12,64 @@ const {
   hashToken,
   extractTokenFromHeader
 } = require('../utils/jwtUtils');
-const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/emailService');
+const { sendVerificationEmail, sendPasswordResetEmail, sendRegistrationOtpEmail } = require('../services/emailService');
+
+const REGISTRATION_OTP_TTL_MS = 10 * 60 * 1000;
+const MAX_REGISTRATION_OTP_ATTEMPTS = 5;
+
+const generateSixDigitOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+
+/**
+ * Send OTP for registration email verification
+ */
+const sendRegistrationOtp = asyncHandler(async (req, res) => {
+  const { email, firstName } = req.body;
+
+  if (!email) {
+    throw ApiError.badRequest('Email is required');
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const existingUser = await User.findOne({ email: normalizedEmail });
+  if (existingUser) {
+    throw ApiError.conflict('Email already exists');
+  }
+
+  const otp = generateSixDigitOtp();
+  const otpHash = hashToken(otp);
+  const expiresAt = new Date(Date.now() + REGISTRATION_OTP_TTL_MS);
+
+  await RegistrationOtp.findOneAndUpdate(
+    { email: normalizedEmail },
+    {
+      email: normalizedEmail,
+      otpHash,
+      expiresAt,
+      attempts: 0,
+      lastSentAt: new Date()
+    },
+    { upsert: true, setDefaultsOnInsert: true }
+  );
+
+  await sendRegistrationOtpEmail(normalizedEmail, otp, firstName);
+
+  res.json(
+    ApiResponse.success(null, 'OTP sent successfully to your email')
+  );
+});
 
 /**
  * Register new user
  */
 const register = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password, role = 'jobseeker' } = req.body;
+  const { firstName, lastName, email, password, role = 'jobseeker', otp } = req.body;
 
   // Validate required fields
-  if (!firstName || !lastName || !email || !password) {
+  if (!firstName || !lastName || !email || !password || !otp) {
     throw ApiError.badRequest('All fields are required');
   }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
 
   // Validate password
   if (password.length < 8) {
@@ -35,26 +82,45 @@ const register = asyncHandler(async (req, res) => {
   }
 
   // Check duplicate email
-  const existingUser = await User.findOne({ email });
+  const existingUser = await User.findOne({ email: normalizedEmail });
   if (existingUser) {
     throw ApiError.conflict('Email already exists');
   }
 
-  // Generate email verification token
-  const verificationToken = generateRandomToken();
-  const hashedVerificationToken = hashToken(verificationToken);
-  const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  const otpRecord = await RegistrationOtp.findOne({ email: normalizedEmail }).select('+otpHash');
+  if (!otpRecord) {
+    throw ApiError.badRequest('Please request OTP first');
+  }
 
+  if (otpRecord.expiresAt < new Date()) {
+    await RegistrationOtp.deleteOne({ _id: otpRecord._id });
+    throw ApiError.badRequest('OTP has expired. Please request a new OTP');
+  }
+
+  if (otpRecord.attempts >= MAX_REGISTRATION_OTP_ATTEMPTS) {
+    await RegistrationOtp.deleteOne({ _id: otpRecord._id });
+    throw ApiError.badRequest('Maximum OTP attempts exceeded. Please request a new OTP');
+  }
+
+  const submittedOtpHash = hashToken(String(otp).trim());
+  if (submittedOtpHash !== otpRecord.otpHash) {
+    otpRecord.attempts += 1;
+    await otpRecord.save();
+    throw ApiError.badRequest('Invalid OTP');
+  }
+
+  // Generate email verification token
   // Create user
   const user = await User.create({
     firstName,
     lastName,
-    email,
+    email: normalizedEmail,
     password,
     role,
-    emailVerificationToken: hashedVerificationToken,
-    emailVerificationExpires: verificationTokenExpiry
+    isEmailVerified: true
   });
+
+  await RegistrationOtp.deleteOne({ _id: otpRecord._id });
 
   // Generate tokens
   const accessToken = generateAccessToken(user._id);
@@ -64,15 +130,6 @@ const register = asyncHandler(async (req, res) => {
   // Store refresh token
   user.refreshToken = hashedRefreshToken;
   await user.save();
-
-  // Send verification email (async, don't block response)
-  setImmediate(async () => {
-    try {
-      await sendVerificationEmail(user, verificationToken);
-    } catch (error) {
-      console.error('Failed to send verification email:', error);
-    }
-  });
 
   // Set refresh token cookie
   res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
@@ -93,7 +150,7 @@ const register = asyncHandler(async (req, res) => {
     ApiResponse.created({
       user: userResponse,
       accessToken
-    }, 'Registration successful. Please check your email for verification.')
+    }, 'Registration successful')
   );
 });
 
@@ -391,6 +448,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  sendRegistrationOtp,
   register,
   login,
   refreshToken,

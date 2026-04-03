@@ -24,6 +24,10 @@ const nextConfig = {
         destination: `${backendUrl}/api/auth/register`,
       },
       {
+        source: '/api/auth/send-registration-otp',
+        destination: `${backendUrl}/api/auth/send-registration-otp`,
+      },
+      {
         source: '/api/auth/login',
         destination: `${backendUrl}/api/auth/login`,
       },
