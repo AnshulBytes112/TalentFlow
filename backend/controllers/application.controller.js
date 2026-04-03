@@ -139,12 +139,15 @@ const applyToJob = asyncHandler(async (req, res) => {
 
   // Check resume exists on profile OR uploaded in this request
   let resumeUrl;
+  let resumePublicId = null;
 
   if (req.file) {
     const uploadedPath = req.file.path || req.file.url || req.file.secure_url;
     resumeUrl = normalizeResumeUrl(req, uploadedPath);
+    resumePublicId = req.file.filename || req.file.public_id || null;
   } else if (req.user.profile?.resumeUrl) {
     resumeUrl = normalizeResumeUrl(req, req.user.profile.resumeUrl);
+    resumePublicId = req.user.profile?.resumePublicId || null;
   } else {
     throw ApiError.badRequest('Resume is required to apply');
   }
@@ -161,6 +164,7 @@ const applyToJob = asyncHandler(async (req, res) => {
     coverLetter,
     resume: {
       url: resumeUrl,
+      publicId: resumePublicId,
       originalName: req.file?.originalname || 'resume'
     }
   });

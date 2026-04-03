@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DashboardUserPanel from '@/components/layout/DashboardUserPanel';
 import api from '@/lib/axios';
@@ -38,6 +39,9 @@ type ConfirmState =
   | null;
 
 export default function AdminUsersPage() {
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -69,13 +73,14 @@ export default function AdminUsersPage() {
     const query = search.trim().toLowerCase();
 
     return users.filter((user) => {
+      const isCurrentUser = !!currentUserId && user._id === currentUserId;
       const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
       const matchesSearch = !query || fullName.includes(query) || user.email.toLowerCase().includes(query);
       const matchesRole = roleFilter === 'all' || user.role === roleFilter;
       const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? user.isActive : !user.isActive);
-      return matchesSearch && matchesRole && matchesStatus;
+      return !isCurrentUser && matchesSearch && matchesRole && matchesStatus;
     });
-  }, [users, search, roleFilter, statusFilter]);
+  }, [users, search, roleFilter, statusFilter, currentUserId]);
 
   const selectedUsers = useMemo(
     () => users.filter((user) => selectedIds.includes(user._id)),
@@ -260,6 +265,9 @@ export default function AdminUsersPage() {
               <div className="space-y-3">
                 {filteredUsers.map((user) => {
                   const isSelected = selectedIds.includes(user._id);
+                  const secondaryLine = user.role === 'recruiter'
+                    ? (user.profile?.companyName || 'Company profile not added')
+                    : (user.profile?.bio || 'Profile details not added');
                   return (
                     <div key={user._id} className={`rounded-2xl border p-4 transition-colors ${isSelected ? 'border-accent-primary/40 bg-accent-primary/5' : 'border-border bg-bg-secondary/20'}`}>
                       <div className="grid gap-4 xl:grid-cols-[auto_1.25fr_1fr_0.8fr_auto] xl:items-center">
@@ -274,7 +282,7 @@ export default function AdminUsersPage() {
 
                         <div className="min-w-0">
                           <p className="truncate text-base font-bold text-white">{user.firstName} {user.lastName}</p>
-                          <p className="truncate text-sm text-text-secondary">{user.profile?.companyName || 'No company profile'}</p>
+                          <p className="truncate text-sm text-text-secondary">{secondaryLine}</p>
                         </div>
 
                         <div className="min-w-0 space-y-1">

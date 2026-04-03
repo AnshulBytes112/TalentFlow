@@ -52,6 +52,7 @@ const createJob = asyncHandler(async (req, res) => {
     jobType,
     salaryMin,
     salaryMax,
+    currency,
     deadline,
     companyDescription,
     benefits,
@@ -129,6 +130,7 @@ const createJob = asyncHandler(async (req, res) => {
     jobData.salary = {};
     if (salaryMin) jobData.salary.min = salaryMin;
     if (salaryMax) jobData.salary.max = salaryMax;
+    if (currency) jobData.salary.currency = currency;
   }
 
   if (companyDescription) {
@@ -247,6 +249,7 @@ const updateJob = asyncHandler(async (req, res) => {
     salaryMin: 'minimum salary',
     salaryMax: 'maximum salary',
     salary: 'salary',
+    currency: 'salary currency',
     deadline: 'application deadline',
     expiryDate: 'application deadline',
     companyDescription: 'company description',
@@ -265,8 +268,8 @@ const updateJob = asyncHandler(async (req, res) => {
     throw ApiError.notFound('Job not found');
   }
 
-  // Only owner recruiter can update
-  if (job.postedBy.toString() !== req.user._id.toString()) {
+  // Recruiters can update only their own jobs; admins can update any job.
+  if (req.user.role === 'recruiter' && job.postedBy.toString() !== req.user._id.toString()) {
     throw ApiError.forbidden('You can only update your own jobs');
   }
 
@@ -316,9 +319,10 @@ const updateJob = asyncHandler(async (req, res) => {
 
   // Handle salary
   if (updateData.salaryMin !== undefined || updateData.salaryMax !== undefined) {
-    const salary = {};
+    const salary = { ...(job.salary || {}) };
     if (updateData.salaryMin !== undefined) salary.min = updateData.salaryMin;
     if (updateData.salaryMax !== undefined) salary.max = updateData.salaryMax;
+    if (updateData.currency !== undefined) salary.currency = updateData.currency;
     
     // Validate salary range
     if (salary.min && salary.max && salary.min > salary.max) {
@@ -327,6 +331,8 @@ const updateJob = asyncHandler(async (req, res) => {
     mappedData.salary = salary;
   } else if (updateData.salary !== undefined) {
     mappedData.salary = updateData.salary;
+  } else if (updateData.currency !== undefined) {
+    mappedData.salary = { ...(job.salary || {}), currency: updateData.currency };
   }
 
   // Handle workMode

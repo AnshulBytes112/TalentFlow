@@ -11,6 +11,7 @@ const { ROLES } = require('../utils/constants');
 const { createNotification } = require('../services/notificationService');
 const { emitToUser, disconnectUser } = require('../services/socketService');
 const path = require('path');
+const fs = require('fs');
 
 const isValidCloudinaryValue = (value) => {
     if (!value) return false;
@@ -26,6 +27,15 @@ const cloudinaryConfigured =
 const buildLocalUploadUrl = (req, filePath) => {
     const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
     return `${backendUrl}/uploads/${path.basename(filePath)}`;
+};
+
+const safeRemoveLocalFile = (filePath) => {
+    if (!filePath || /^https?:\/\//i.test(filePath)) return;
+    fs.unlink(filePath, (error) => {
+        if (error && error.code !== 'ENOENT') {
+            console.warn('Failed to remove temporary upload file:', error.message);
+        }
+    });
 };
 
 /**
@@ -134,11 +144,12 @@ const uploadResume = asyncHandler(async (req, res) => {
         // Multer already handled upload
         result = {
             secure_url: req.file.path,
-            public_id: req.file.filename
+            public_id: req.file.filename || req.file.public_id || null
         };
     } else if (cloudinaryConfigured) {
         // Manual cloud upload if needed
         result = await uploadToCloudinary(req.file.path, 'resumes');
+        safeRemoveLocalFile(req.file.path);
     } else {
         // Local disk fallback for development
         result = {
@@ -199,10 +210,11 @@ const uploadAvatar = asyncHandler(async (req, res) => {
     if (req.file.path && req.file.path.startsWith('http')) {
         result = {
             secure_url: req.file.path,
-            public_id: req.file.filename
+            public_id: req.file.filename || req.file.public_id || null
         };
     } else if (cloudinaryConfigured) {
         result = await uploadToCloudinary(req.file.path, 'avatars');
+        safeRemoveLocalFile(req.file.path);
     } else {
         result = {
             secure_url: buildLocalUploadUrl(req, req.file.path),

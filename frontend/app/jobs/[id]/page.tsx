@@ -68,7 +68,14 @@ export default function JobDetailsPage() {
     }
     if (job.salary) {
       const { min, max, currency = 'USD' } = job.salary;
-      const symbol = currency === 'USD' ? '$' : currency;
+      const currencySymbolMap: Record<string, string> = {
+        USD: '$',
+        EUR: 'EUR',
+        GBP: 'GBP',
+        INR: 'Rs',
+        CAD: 'CAD'
+      };
+      const symbol = currencySymbolMap[currency] || currency;
       if (min && max) salaryStr = `${symbol}${min.toLocaleString()} - ${symbol}${max.toLocaleString()}`;
       else if (min) salaryStr = `From ${symbol}${min.toLocaleString()}`;
       else if (max) salaryStr = `Up to ${symbol}${max.toLocaleString()}`;

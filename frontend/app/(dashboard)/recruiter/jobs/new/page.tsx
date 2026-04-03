@@ -111,7 +111,7 @@ export default function JobCreationPage() {
         workMode: formData.workMode,
         isUnpaid: !!formData.isUnpaid,
         // only include salary when not unpaid
-        ...(formData.isUnpaid ? {} : { salaryMin: formData.salaryMin, salaryMax: formData.salaryMax }),
+        ...(formData.isUnpaid ? {} : { salaryMin: formData.salaryMin, salaryMax: formData.salaryMax, currency: formData.currency }),
         deadline: formData.deadline || format(addDays(new Date(), 30), 'yyyy-MM-dd'),
         companyName: formData.companyName,
         category: formData.category,
@@ -489,6 +489,7 @@ export default function JobCreationPage() {
             <option value="USD">USD</option>
             <option value="EUR">EUR</option>
             <option value="GBP">GBP</option>
+            <option value="INR">INR</option>
             <option value="CAD">CAD</option>
           </select>
         </div>

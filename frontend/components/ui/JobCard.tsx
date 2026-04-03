@@ -36,7 +36,14 @@ const JobCard: React.FC<JobCardProps> = ({ job, hasApplied }) => {
     if (job.isUnpaid) return 'Unpaid';
     if (!job.salary) return null;
     const { min, max, currency = 'USD' } = job.salary;
-    const symbol = currency === 'USD' ? '$' : currency;
+    const currencySymbolMap: Record<string, string> = {
+      USD: '$',
+      EUR: 'EUR',
+      GBP: 'GBP',
+      INR: 'Rs',
+      CAD: 'CAD'
+    };
+    const symbol = currencySymbolMap[currency] || currency;
     
     if (min && max) return `${symbol}${min.toLocaleString()} - ${symbol}${max.toLocaleString()}`;
     if (min) return `From ${symbol}${min.toLocaleString()}`;
