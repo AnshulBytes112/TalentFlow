@@ -2,7 +2,8 @@ import axios from 'axios';
 import { signOut } from 'next-auth/react';
 import { clearAccessToken, getAccessToken } from '@/lib/authToken';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// Keep requests same-origin so Next.js rewrites can route to backend in all environments.
+const API_BASE_URL = '';
 
 // Create axios instance
 const api = axios.create({

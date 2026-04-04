@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { google } = require('googleapis');
 const dotenv = require('dotenv');
 const path = require('path');
 
@@ -12,27 +13,96 @@ const SMTP_PORT = Number(firstNonEmpty(process.env.EMAIL_PORT, process.env.SMTP_
 const SMTP_SECURE = String(firstNonEmpty(process.env.EMAIL_SECURE, process.env.SMTP_SECURE, 'false')).toLowerCase() === 'true';
 const SMTP_USER = firstNonEmpty(process.env.EMAIL_USER, process.env.SMTP_USER);
 const SMTP_PASS = firstNonEmpty(process.env.EMAIL_PASS, process.env.SMTP_PASS);
+const EMAIL_PROVIDER = String(firstNonEmpty(process.env.EMAIL_PROVIDER, 'smtp')).toLowerCase();
 
-const assertSmtpCredentials = () => {
+const GMAIL_CLIENT_ID = firstNonEmpty(process.env.GMAIL_CLIENT_ID, process.env.GOOGLE_CLIENT_ID);
+const GMAIL_CLIENT_SECRET = firstNonEmpty(process.env.GMAIL_CLIENT_SECRET, process.env.GOOGLE_CLIENT_SECRET);
+const GMAIL_REFRESH_TOKEN = firstNonEmpty(process.env.GMAIL_REFRESH_TOKEN, process.env.GOOGLE_REFRESH_TOKEN);
+const GMAIL_SENDER_EMAIL = firstNonEmpty(process.env.GMAIL_SENDER_EMAIL, process.env.EMAIL_USER, process.env.FROM_EMAIL);
+
+const createTransporter = () => {
   if (!SMTP_USER || !SMTP_PASS) {
-    throw new Error('Email credentials are missing. Set EMAIL_USER and EMAIL_PASS in backend/.env');
+    throw new Error('Email service is not configured. Set EMAIL_USER and EMAIL_PASS.');
   }
+
+  return nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_SECURE,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS
+    }
+  });
 };
 
-// Create transporter
-assertSmtpCredentials();
-const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: SMTP_SECURE,
-  auth: {
-    user: SMTP_USER,
-    pass: SMTP_PASS
+const getGmailOAuthClient = () => {
+  if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_REFRESH_TOKEN || !GMAIL_SENDER_EMAIL) {
+    throw new Error('Gmail API is not configured. Set GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN, and GMAIL_SENDER_EMAIL.');
   }
-});
+
+  const oauth2Client = new google.auth.OAuth2(
+    GMAIL_CLIENT_ID,
+    GMAIL_CLIENT_SECRET,
+    'https://developers.google.com/oauthplayground'
+  );
+
+  oauth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
+  return oauth2Client;
+};
+
+const buildRawGmailMessage = (mailOptions) => {
+  const from = mailOptions.from || `${APP_NAME} <${GMAIL_SENDER_EMAIL}>`;
+  const to = Array.isArray(mailOptions.to) ? mailOptions.to.join(', ') : mailOptions.to;
+  const subject = mailOptions.subject || '';
+  const hasHtml = !!mailOptions.html;
+  const contentType = hasHtml ? 'text/html; charset="UTF-8"' : 'text/plain; charset="UTF-8"';
+  const body = hasHtml ? mailOptions.html : (mailOptions.text || '');
+
+  const mimeMessage = [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'MIME-Version: 1.0',
+    `Content-Type: ${contentType}`,
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    body,
+  ].join('\r\n');
+
+  return Buffer.from(mimeMessage)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+};
+
+const sendMailViaGmailApi = async (mailOptions) => {
+  const oauth2Client = getGmailOAuthClient();
+  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+  const raw = buildRawGmailMessage(mailOptions);
+
+  return gmail.users.messages.send({
+    userId: 'me',
+    requestBody: { raw }
+  });
+};
+
+const sendMail = async (mailOptions) => {
+  if (EMAIL_PROVIDER === 'gmail_api') {
+    return sendMailViaGmailApi(mailOptions);
+  }
+
+  const transporter = createTransporter();
+  return transporter.sendMail(mailOptions);
+};
 
 const APP_NAME = 'JobMatrix';
-const FROM_EMAIL = `${APP_NAME} <${SMTP_USER}>`;
+const DEFAULT_FROM_ADDRESS = firstNonEmpty(
+  process.env.FROM_EMAIL,
+  EMAIL_PROVIDER === 'gmail_api' ? GMAIL_SENDER_EMAIL : SMTP_USER
+);
+const FROM_EMAIL = DEFAULT_FROM_ADDRESS ? `${APP_NAME} <${DEFAULT_FROM_ADDRESS}>` : APP_NAME;
 
 /**
  * Send Welcome Email
@@ -58,7 +128,7 @@ const sendWelcomeEmail = async (user) => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 /**
@@ -83,7 +153,7 @@ const sendEmailVerification = async (user, token) => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 /**
@@ -109,7 +179,7 @@ const sendRegistrationOtpEmail = async (email, otp, firstName = 'there') => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 /**
@@ -135,7 +205,7 @@ const sendPasswordResetOtpEmail = async (email, otp, firstName = 'there') => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 /**
@@ -160,7 +230,7 @@ const sendPasswordReset = async (user, token) => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 // Backward-compatible aliases used by auth controller.
@@ -187,7 +257,7 @@ const sendApplicationReceived = async (applicant, job) => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 /**
@@ -239,7 +309,7 @@ const sendStageUpdate = async (applicant, job, newStage, note) => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 /**
@@ -262,7 +332,7 @@ const sendOfferEmail = async (applicant, job) => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 /**
@@ -284,7 +354,7 @@ const sendRejectionEmail = async (applicant, job, note) => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 /**
@@ -310,7 +380,7 @@ const sendJobExpiryReminder = async (recruiter, jobs) => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 /**
@@ -333,7 +403,7 @@ const sendPendingApplicationsReminder = async (recruiter, count) => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 /**
@@ -419,7 +489,7 @@ const sendJobUpdatedEmail = async (applicant, job, updatedFields = []) => {
     `
   };
 
-  return await transporter.sendMail(mailOptions);
+  return await sendMail(mailOptions);
 };
 
 module.exports = {
