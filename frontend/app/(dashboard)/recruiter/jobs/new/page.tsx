@@ -307,7 +307,7 @@ export default function JobCreationPage() {
         <label className="block text-sm font-bold text-white mb-2">Company Name *</label>
         <Input
           label="Company Name"
-          placeholder="e.g. JobMatrix Inc"
+          placeholder="e.g. TalentFlow Inc"
           value={formData.companyName}
           onChange={(e) => handleInputChange('companyName', e.target.value)}
           className="bg-bg-secondary"

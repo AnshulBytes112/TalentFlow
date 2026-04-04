@@ -1,8 +1,8 @@
-# JobMatrix QA Audit Report
+# TalentFlow QA Audit Report
 
 ## 🎯 Executive Summary
 
-An **autonomous end-to-end QA audit** of the entire JobMatrix job portal application has been completed with **95.2% health score** (20/21 tests passing).
+An **autonomous end-to-end QA audit** of the entire TalentFlow job portal application has been completed with **95.2% health score** (20/21 tests passing).
 
 ### Key Results
 - ✅ **All authentication systems** working (register, login, JWT, protected routes)
@@ -105,7 +105,7 @@ UI                   Mobile responsive design                 PASS
 ## 📁 QA Artifacts Generated
 
 ```
-JobMatrix/
+TalentFlow/
 ├─ QA_AUDIT_REPORT.txt              ✅ Detailed test results (automated)
 ├─ QA_AUDIT_SUMMARY.md              ✅ Comprehensive analysis & recommendations
 ├─ QA_FRAMEWORK_DOCUMENTATION.js     ✅ Framework guide & team sign-off
@@ -184,7 +184,7 @@ cat QA_AUDIT_SUMMARY.md
 ### For Testing
 ```bash
 # Terminal 1: Start servers
-cd JobMatrix && npm run dev
+cd frontend && npm run dev
 
 # Terminal 2: Run QA audit
 node qa-runner.js

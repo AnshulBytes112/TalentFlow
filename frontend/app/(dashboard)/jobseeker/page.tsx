@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import api from '@/lib/axios';
 import { toast } from 'react-hot-toast';
+import { getJobseekerProfileCompletion } from '@/lib/profileCompletion';
 
 const STAGES = ['applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'];
 
@@ -78,24 +79,7 @@ export default function JobseekerDashboardPage() {
 
   const profileStatus = useMemo(() => {
     if (!profile) return { isComplete: true, percent: 100, missing: [] }; // Hide skeleton while loading
-    
-    let score = 0;
-    const missing = [];
-    
-    if (profile.resumeUrl) score += 40;
-    else missing.push({ label: 'Resume', path: '/profile#resume' });
-    
-    if (profile.skills && profile.skills.length > 0) score += 30;
-    else missing.push({ label: 'Skills', path: '/profile#skills' });
-    
-    if (profile.experience && profile.experience.length > 0) score += 30;
-    else missing.push({ label: 'Experience', path: '/profile#experience' });
-    
-    return {
-      isComplete: score === 100,
-      percent: score,
-      missing
-    };
+    return getJobseekerProfileCompletion(profile);
   }, [profile]);
 
   const stats = useMemo(() => {

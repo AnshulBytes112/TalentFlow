@@ -35,6 +35,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getProfileCompletionByRole } from '@/lib/profileCompletion';
 
 const ROLES = {
   JOBSEEKER: 'jobseeker',
@@ -309,13 +310,9 @@ export default function ProfilePage() {
 
   const profileCompletion = useMemo(() => {
     if (!profile || !session?.user?.role) return 0;
-    let complete = 0;
-    const total = allowedFields.length;
-    allowedFields.forEach((field: string) => {
-      if (profile[field]) complete++;
-    });
-    return Math.round((complete / total) * 100);
-  }, [profile, allowedFields]);
+
+    return getProfileCompletionByRole(profile, session.user.role).percent;
+  }, [profile, session?.user?.role]);
 
   // Helper to safely convert dates to displayable strings
   const safeDate = (val: any): string => {

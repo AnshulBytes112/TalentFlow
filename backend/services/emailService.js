@@ -97,12 +97,13 @@ const sendMail = async (mailOptions) => {
   return transporter.sendMail(mailOptions);
 };
 
-const APP_NAME = 'JobMatrix';
+const APP_NAME = 'TalentFlow';
+const SENDER_NAME = 'TalentFlow';
 const DEFAULT_FROM_ADDRESS = firstNonEmpty(
   process.env.FROM_EMAIL,
   EMAIL_PROVIDER === 'gmail_api' ? GMAIL_SENDER_EMAIL : SMTP_USER
 );
-const FROM_EMAIL = DEFAULT_FROM_ADDRESS ? `${APP_NAME} <${DEFAULT_FROM_ADDRESS}>` : APP_NAME;
+const FROM_EMAIL = DEFAULT_FROM_ADDRESS ? `${SENDER_NAME} <${DEFAULT_FROM_ADDRESS}>` : SENDER_NAME;
 
 /**
  * Send Welcome Email
@@ -114,7 +115,7 @@ const sendWelcomeEmail = async (user) => {
     subject: `Welcome to ${APP_NAME}!`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-        <h2 style="color: #4a90e2; text-align: center;">Welcome to JobMatrix, ${user.firstName}!</h2>
+        <h2 style="color: #4a90e2; text-align: center;">Welcome to TalentFlow, ${user.firstName}!</h2>
         <p>We're excited to have you join our community. Whether you're looking for your next career move or searching for top talent, we're here to help you succeed.</p>
         <p>Get started by completing your profile to stand out to potential ${user.role === 'jobseeker' ? 'employers' : 'candidates'}.</p>
         <div style="text-align: center; margin-top: 30px;">

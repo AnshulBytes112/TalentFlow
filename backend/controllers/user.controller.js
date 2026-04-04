@@ -644,7 +644,7 @@ const deleteUser = asyncHandler(async (req, res) => {
         user.isActive = false;
         user.firstName = 'Deleted';
         user.lastName = 'User';
-        user.email = `deleted_${id}@jobmatrix.com`; // Anonymize email
+        user.email = `deleted_${id}@talentflow.local`; // Anonymize email
         user.passwordHash = 'deleted';
         await user.save();
         return res.json(ApiResponse.success(user, 'User soft-deleted and anonymized successfully'));
