@@ -581,10 +581,23 @@ const getJobs = asyncHandler(async (req, res) => {
     .skip(skip)
     .limit(limitNum);
 
+  const jobsWithCount = await Promise.all(
+    jobs.map(async (job) => {
+      const applicantCount = await Application.countDocuments({ job: job._id });
+
+      return {
+        ...job.toObject(),
+        applicantCount,
+        applicantsCount: applicantCount,
+        applicationCount: applicantCount
+      };
+    })
+  );
+
   const total = await Job.countDocuments(query);
 
   res.json(
-    ApiResponse.paginated(jobs, {
+    ApiResponse.paginated(jobsWithCount, {
       page: pageNum,
       limit: limitNum,
       total

@@ -17,6 +17,7 @@ type Job = {
   title: string;
   company?: { name?: string; description?: string };
   status?: string;
+  applicationCount?: number;
   applicantCount?: number;
   applicantsCount?: number;
   createdAt?: string;
@@ -186,7 +187,7 @@ export default function AdminJobsPage() {
                               ))}
                             </select>
                           </td>
-                          <td className="px-4 py-4 text-sm text-text-secondary">{job.applicantCount ?? job.applicantsCount ?? 0}</td>
+                          <td className="px-4 py-4 text-sm text-text-secondary">{job.applicationCount ?? job.applicantCount ?? job.applicantsCount ?? 0}</td>
                           <td className="px-4 py-4">
                             <div className="flex flex-wrap gap-2">
                               <Button size="sm" variant="ghost" onClick={() => updateStatus(job._id, 'active')}>
