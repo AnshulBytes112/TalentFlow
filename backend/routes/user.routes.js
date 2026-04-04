@@ -67,6 +67,8 @@ router.post(
     userController.uploadAvatar
 );
 
+router.get('/resume/access', verifyJWT, roleGuard('jobseeker'), userController.getResumeAccess);
+
 router.put('/change-password', verifyJWT, userController.updatePassword);
 
 router.get('/', verifyJWT, roleGuard('admin'), userController.getAllUsers);

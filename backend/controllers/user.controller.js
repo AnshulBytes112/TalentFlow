@@ -5,7 +5,7 @@ const Notification = require('../models/Notification');
 const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../utils/asyncHandler');
-const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
+const { cloudinary, uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
 const emailService = require('../services/emailService');
 const { ROLES } = require('../utils/constants');
 const { createNotification } = require('../services/notificationService');
@@ -36,6 +36,24 @@ const safeRemoveLocalFile = (filePath) => {
             console.warn('Failed to remove temporary upload file:', error.message);
         }
     });
+};
+
+const extractFileExtension = (url = '', fallback = 'pdf') => {
+    const clean = String(url).split('?')[0];
+    const filename = clean.split('/').pop() || '';
+    const parts = filename.split('.');
+    if (parts.length < 2) return fallback;
+    return parts.pop() || fallback;
+};
+
+const extractFileName = (url = '', fallback = 'resume') => {
+    const clean = String(url).split('?')[0];
+    const filename = clean.split('/').pop() || '';
+    try {
+        return decodeURIComponent(filename) || fallback;
+    } catch {
+        return filename || fallback;
+    }
 };
 
 /**
@@ -130,7 +148,7 @@ const uploadResume = asyncHandler(async (req, res) => {
     // Delete previous resume from Cloudinary if exists
     if (req.user.profile.resumePublicId && cloudinaryConfigured) {
         try {
-            await deleteFromCloudinary(req.user.profile.resumePublicId);
+            await deleteFromCloudinary(req.user.profile.resumePublicId, { resource_type: 'raw' });
         } catch (error) {
             // Do not block new upload when old asset cleanup fails.
             console.warn('Failed to delete old resume from Cloudinary:', error.message);
@@ -148,7 +166,11 @@ const uploadResume = asyncHandler(async (req, res) => {
         };
     } else if (cloudinaryConfigured) {
         // Manual cloud upload if needed
-        result = await uploadToCloudinary(req.file.path, 'resumes');
+        result = await uploadToCloudinary(req.file.path, 'resumes', {
+            resource_type: 'raw',
+            type: 'upload',
+            access_mode: 'public'
+        });
         safeRemoveLocalFile(req.file.path);
     } else {
         // Local disk fallback for development
@@ -234,6 +256,57 @@ const uploadAvatar = asyncHandler(async (req, res) => {
     );
 
     res.json(ApiResponse.success(user, 'Avatar uploaded successfully'));
+});
+
+/**
+ * Get secure resume access URLs (view + download)
+ */
+const getResumeAccess = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id).select('profile.resumeUrl profile.resumePublicId');
+    const resumeUrl = user?.profile?.resumeUrl;
+
+    if (!resumeUrl) {
+        throw ApiError.notFound('No resume uploaded');
+    }
+
+    const fileName = extractFileName(resumeUrl, 'resume');
+    const fileExt = extractFileExtension(resumeUrl, 'pdf');
+    const resumePublicId = user?.profile?.resumePublicId;
+
+    let viewUrl = resumeUrl;
+    let downloadUrl = resumeUrl;
+
+    if (cloudinaryConfigured && resumePublicId) {
+        try {
+            viewUrl = cloudinary.url(resumePublicId, {
+                resource_type: 'raw',
+                type: 'upload',
+                secure: true,
+                sign_url: true,
+            });
+
+            downloadUrl = cloudinary.utils.private_download_url(resumePublicId, fileExt, {
+                resource_type: 'raw',
+                type: 'upload',
+                attachment: fileName,
+                expires_at: Math.floor(Date.now() / 1000) + 5 * 60,
+            });
+        } catch (error) {
+            // Fall back to stored URL if signed URL generation fails.
+            console.warn('Failed to generate signed Cloudinary resume URL:', error.message);
+        }
+    }
+
+    res.json(
+        ApiResponse.success(
+            {
+                fileName,
+                viewUrl,
+                downloadUrl,
+            },
+            'Resume access URLs generated successfully'
+        )
+    );
 });
 
 /**
@@ -545,6 +618,7 @@ module.exports = {
     updateProfile,
     uploadResume,
     uploadAvatar,
+    getResumeAccess,
     updatePassword,
     getAllUsers,
     getUserById,

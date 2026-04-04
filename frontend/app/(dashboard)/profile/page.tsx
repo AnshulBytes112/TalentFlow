@@ -368,6 +368,22 @@ export default function ProfilePage() {
     };
   }, [formData]);
 
+  const handleResumeAccess = async (mode: 'view' | 'download') => {
+    try {
+      const response = await api.get('/api/users/resume/access');
+      const accessData = response?.data?.data || {};
+      const targetUrl = mode === 'download' ? accessData.downloadUrl : accessData.viewUrl;
+
+      if (!targetUrl) {
+        throw new Error('Resume URL is unavailable');
+      }
+
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Unable to open resume right now');
+    }
+  };
+
   if (status === 'loading' || isLoading) {
     return (
       <DashboardLayout>
@@ -555,21 +571,20 @@ export default function ProfilePage() {
                         </p>
 
                         <div className="flex flex-wrap gap-2">
-                          <a
-                            href={safeString(profile.profile.resumeUrl)}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => void handleResumeAccess('view')}
                             className="inline-flex items-center rounded-xl border border-border px-3 py-2 text-xs font-bold text-white hover:border-accent-primary hover:text-accent-primary transition-colors"
                           >
                             Open Resume
-                          </a>
-                          <a
-                            href={safeString(profile.profile.resumeUrl)}
-                            download
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleResumeAccess('download')}
                             className="inline-flex items-center rounded-xl border border-border px-3 py-2 text-xs font-bold text-white hover:border-accent-primary hover:text-accent-primary transition-colors"
                           >
                             Download
-                          </a>
+                          </button>
                         </div>
 
                         {safeString(profile.profile.resumeUrl).toLowerCase().includes('.pdf') && (

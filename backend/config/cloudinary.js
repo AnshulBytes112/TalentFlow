@@ -19,11 +19,12 @@ const storage = new CloudinaryStorage({
   },
 });
 
-const uploadToCloudinary = async (file, folder = 'job-portal') => {
+const uploadToCloudinary = async (file, folder = 'job-portal', options = {}) => {
   try {
     const result = await cloudinary.uploader.upload(file, {
       folder,
       resource_type: 'auto',
+      ...options,
     });
     return result;
   } catch (error) {
@@ -31,9 +32,9 @@ const uploadToCloudinary = async (file, folder = 'job-portal') => {
   }
 };
 
-const deleteFromCloudinary = async (publicId) => {
+const deleteFromCloudinary = async (publicId, options = {}) => {
   try {
-    const result = await cloudinary.uploader.destroy(publicId);
+    const result = await cloudinary.uploader.destroy(publicId, options);
     return result;
   } catch (error) {
     throw new Error(`Cloudinary delete error: ${error.message}`);
