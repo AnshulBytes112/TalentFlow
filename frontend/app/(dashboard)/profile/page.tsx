@@ -443,7 +443,7 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="p-8 border-b border-border last:border-b-0">
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
+              <div className="flex flex-col items-start gap-6 mb-8">
                 <div className="flex-shrink-0">
                   <div className="relative group">
                     <Avatar
@@ -484,9 +484,6 @@ export default function ProfilePage() {
                       <h2 className="text-3xl font-black text-white truncate">
                         {safeString(profile?.firstName)} {safeString(profile?.lastName)}
                       </h2>
-                      <Badge variant="default" className="uppercase px-4 py-1 text-sm font-black">
-                        {session.user.role}
-                      </Badge>
                     </>
                   )}
                   <div className="flex items-center gap-3 flex-wrap">
