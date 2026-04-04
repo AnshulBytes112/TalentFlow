@@ -56,6 +56,40 @@ const extractFileName = (url = '', fallback = 'resume') => {
     }
 };
 
+const parseCloudinaryRawAsset = (url = '') => {
+    try {
+        const parsedUrl = new URL(String(url));
+        const uploadMarker = '/upload/';
+        const markerIndex = parsedUrl.pathname.indexOf(uploadMarker);
+
+        if (markerIndex === -1) {
+            return { publicId: '', format: '' };
+        }
+
+        let assetPath = parsedUrl.pathname.slice(markerIndex + uploadMarker.length);
+        assetPath = assetPath.replace(/^s--[^/]+--\//, '');
+        assetPath = assetPath.replace(/^v\d+\//, '');
+
+        if (!assetPath) {
+            return { publicId: '', format: '' };
+        }
+
+        const decodedPath = decodeURIComponent(assetPath);
+        const lastDot = decodedPath.lastIndexOf('.');
+
+        if (lastDot === -1) {
+            return { publicId: decodedPath, format: '' };
+        }
+
+        return {
+            publicId: decodedPath.slice(0, lastDot),
+            format: decodedPath.slice(lastDot + 1),
+        };
+    } catch {
+        return { publicId: '', format: '' };
+    }
+};
+
 /**
  * @swagger
  * /api/users/profile:
@@ -272,20 +306,23 @@ const getResumeAccess = asyncHandler(async (req, res) => {
     const fileName = extractFileName(resumeUrl, 'resume');
     const fileExt = extractFileExtension(resumeUrl, 'pdf');
     const resumePublicId = user?.profile?.resumePublicId;
+    const parsedAsset = parseCloudinaryRawAsset(resumeUrl);
+    const effectivePublicId = resumePublicId || parsedAsset.publicId;
+    const effectiveFormat = parsedAsset.format || fileExt;
 
     let viewUrl = resumeUrl;
     let downloadUrl = resumeUrl;
 
-    if (cloudinaryConfigured && resumePublicId) {
+    if (cloudinaryConfigured && effectivePublicId) {
         try {
-            viewUrl = cloudinary.url(resumePublicId, {
+            viewUrl = cloudinary.utils.private_download_url(effectivePublicId, effectiveFormat, {
                 resource_type: 'raw',
                 type: 'upload',
-                secure: true,
-                sign_url: true,
+                attachment: false,
+                expires_at: Math.floor(Date.now() / 1000) + 5 * 60,
             });
 
-            downloadUrl = cloudinary.utils.private_download_url(resumePublicId, fileExt, {
+            downloadUrl = cloudinary.utils.private_download_url(effectivePublicId, effectiveFormat, {
                 resource_type: 'raw',
                 type: 'upload',
                 attachment: fileName,
