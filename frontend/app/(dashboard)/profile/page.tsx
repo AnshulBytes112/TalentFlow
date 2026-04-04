@@ -334,6 +334,19 @@ export default function ProfilePage() {
     return String(val);
   };
 
+  const resumeFileName = useMemo(() => {
+    const rawUrl = safeString(profile?.profile?.resumeUrl);
+    if (!rawUrl) return '';
+
+    try {
+      const withoutQuery = rawUrl.split('?')[0];
+      const lastSegment = withoutQuery.split('/').pop() || '';
+      return decodeURIComponent(lastSegment) || 'resume';
+    } catch {
+      return 'resume';
+    }
+  }, [profile]);
+
   // Helper to safely convert dates for date input fields (YYYY-MM-DD format)
   const safeDateInput = (val: any): string => {
     if (!val) return '';
@@ -521,14 +534,54 @@ export default function ProfilePage() {
                   )}
                 </CardHeader>
                 <CardContent className="p-6">
-                  <Button
-                    onClick={() => setUploadModal('resume')}
-                    variant="outline"
-                    className="w-full justify-start"
-                    leftIcon={<Upload size={18} />}
-                  >
-                    {profile?.profile?.resumeUrl ? 'Update Resume' : 'Upload Resume'}
-                  </Button>
+                  <div className="space-y-4">
+                    <Button
+                      onClick={() => setUploadModal('resume')}
+                      variant="outline"
+                      className="w-full justify-start"
+                      leftIcon={<Upload size={18} />}
+                    >
+                      {profile?.profile?.resumeUrl ? 'Update Resume' : 'Upload Resume'}
+                    </Button>
+
+                    {profile?.profile?.resumeUrl && (
+                      <div className="rounded-2xl border border-border bg-bg-secondary/40 p-4 space-y-3">
+                        <div className="flex items-center gap-2 text-sm text-text-secondary">
+                          <FileText size={16} className="text-accent-primary" />
+                          <span className="font-medium truncate">Current resume uploaded</span>
+                        </div>
+                        <p className="text-xs text-text-tertiary truncate" title={resumeFileName}>
+                          File: {resumeFileName || 'resume'}
+                        </p>
+
+                        <div className="flex flex-wrap gap-2">
+                          <a
+                            href={safeString(profile.profile.resumeUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center rounded-xl border border-border px-3 py-2 text-xs font-bold text-white hover:border-accent-primary hover:text-accent-primary transition-colors"
+                          >
+                            Open Resume
+                          </a>
+                          <a
+                            href={safeString(profile.profile.resumeUrl)}
+                            download
+                            className="inline-flex items-center rounded-xl border border-border px-3 py-2 text-xs font-bold text-white hover:border-accent-primary hover:text-accent-primary transition-colors"
+                          >
+                            Download
+                          </a>
+                        </div>
+
+                        {safeString(profile.profile.resumeUrl).toLowerCase().includes('.pdf') && (
+                          <iframe
+                            src={safeString(profile.profile.resumeUrl)}
+                            title="Resume preview"
+                            className="h-72 w-full rounded-xl border border-border bg-bg-primary"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
               <Card>
