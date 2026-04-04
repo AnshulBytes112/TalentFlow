@@ -217,7 +217,7 @@ export default function RecruiterDashboardPage() {
         )}
 
         {/* Quick Actions Bar */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-6 bg-bg-card border border-border rounded-2xl">
+        <div className="flex w-full max-w-full flex-col gap-4 items-start sm:flex-row sm:items-center justify-between p-6 bg-bg-card border border-border rounded-2xl">
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
             <Link href="/recruiter/jobs/new">
               <Button className="px-6 py-3 font-bold rounded-xl whitespace-nowrap">
@@ -242,7 +242,7 @@ export default function RecruiterDashboardPage() {
 
         {/* My Jobs Table */}
         <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-xl font-display font-black uppercase tracking-tight text-white">My Jobs</CardTitle>
             <Link href="/recruiter/jobs">
               <Button variant="ghost" className="text-xs font-bold text-accent-primary hover:underline">
@@ -270,8 +270,8 @@ export default function RecruiterDashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="w-full max-w-full overflow-x-auto">
+                <table className="w-full min-w-[780px] lg:min-w-0">
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-text-tertiary">Job Title</th>
@@ -400,7 +400,7 @@ export default function RecruiterDashboardPage() {
 
         {/* Recent Applications Widget */}
         <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-xl font-display font-black uppercase tracking-tight text-white">Recent Applications</CardTitle>
             <Link href="/recruiter/pipeline">
               <Button variant="ghost" className="text-xs font-bold text-accent-primary hover:underline">
@@ -420,26 +420,26 @@ export default function RecruiterDashboardPage() {
                 {recentApplications.map((application) => (
                   <div 
                     key={application._id} 
-                    className="flex items-center justify-between p-4 rounded-xl bg-bg-secondary/30 border border-border hover:border-border/80 transition-colors cursor-pointer"
+                    className="flex min-w-0 items-center justify-between p-4 rounded-xl bg-bg-secondary/30 border border-border hover:border-border/80 transition-colors cursor-pointer"
                     onClick={() => window.location.href = `/recruiter/pipeline?job=${application.job._id}`}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex min-w-0 items-center gap-4">
                       <Avatar
                         initials={`${application.applicant.firstName?.[0] || ''}${application.applicant.lastName?.[0] || ''}`.toUpperCase()}
                         size="md"
                       />
-                      <div>
-                        <h4 className="text-sm font-bold text-white">
+                      <div className="min-w-0">
+                        <h4 className="truncate text-sm font-bold text-white">
                           <Link href={`/recruiter/pipeline?app=${application._id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
                             {application.applicant.firstName} {application.applicant.lastName}
                           </Link>
                         </h4>
-                        <p className="text-xs text-text-tertiary">
+                        <p className="truncate text-xs text-text-tertiary">
                           Applied to <Link href={`/recruiter/jobs/${application.job._id}/applications`} onClick={(e) => e.stopPropagation()} className="hover:underline">{application.job.title}</Link> • {formatDistanceToNow(new Date(application.createdAt), { addSuffix: true })}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="shrink-0 flex items-center gap-3">
                       <Badge variant={application.stage} className="text-[9px]">
                         {application.stage}
                       </Badge>

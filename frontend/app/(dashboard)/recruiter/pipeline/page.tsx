@@ -495,13 +495,13 @@ export default function RecruiterPipelinePage() {
         </header>
 
         {/* Job Filter */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-4 bg-bg-card border border-border rounded-xl">
-          <div className="flex items-center gap-4">
+        <div className="flex w-full max-w-full flex-col gap-4 items-start sm:flex-row sm:items-center justify-between p-4 bg-bg-card border border-border rounded-xl">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-4 sm:w-auto sm:flex-nowrap">
             <label className="text-sm font-bold text-white">Filter by Job:</label>
             <select
               value={selectedJob}
               onChange={(e) => setSelectedJob(e.target.value)}
-              className="px-4 py-2 bg-bg-secondary border border-border rounded-xl text-white focus:ring-2 focus:ring-accent-primary focus:border-transparent font-medium"
+              className="w-full sm:w-auto max-w-full px-4 py-2 bg-bg-secondary border border-border rounded-xl text-white focus:ring-2 focus:ring-accent-primary focus:border-transparent font-medium"
             >
               <option value="all">All Jobs</option>
               {jobs.map(job => (
@@ -511,7 +511,7 @@ export default function RecruiterPipelinePage() {
               ))}
             </select>
           </div>
-          <div className="text-sm text-text-secondary">
+          <div className="text-sm text-text-secondary shrink-0">
             {applications.length} total applications
           </div>
         </div>
@@ -524,16 +524,18 @@ export default function RecruiterPipelinePage() {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {STAGES.map(stage => (
-              <PipelineColumn
-                key={stage}
-                stage={stage}
-                applications={applicationsByStage[stage] || []}
-                activeId={activeId}
-                onSelect={setSelectedApplication}
-              />
-            ))}
+          <div className="w-full max-w-full overflow-x-auto">
+            <div className="grid grid-cols-1 gap-4 md:min-w-[1100px] md:grid-cols-5 lg:min-w-0">
+              {STAGES.map(stage => (
+                <PipelineColumn
+                  key={stage}
+                  stage={stage}
+                  applications={applicationsByStage[stage] || []}
+                  activeId={activeId}
+                  onSelect={setSelectedApplication}
+                />
+              ))}
+            </div>
           </div>
 
           <DragOverlay>

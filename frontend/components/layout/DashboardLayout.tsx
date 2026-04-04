@@ -61,7 +61,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const currentNav = navItems[role as keyof typeof navItems] || navItems.jobseeker;
 
   return (
-    <div className="flex min-h-screen bg-bg-primary">
+    <div className="flex min-h-screen overflow-x-clip bg-bg-primary">
       {/* Sidebar */}
       <motion.aside
         initial={false}
@@ -146,10 +146,10 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Main Content Area */}
       <main className={cn(
-        "flex-1 transition-all duration-300 min-h-screen pb-24 md:pb-0",
+        "flex-1 min-h-screen overflow-x-hidden pb-24 transition-all duration-300 md:pb-0",
         isCollapsed ? "pl-0 md:pl-20" : "pl-0 md:pl-[280px]"
       )}>
-        <div className="pt-24 p-8 max-w-7xl mx-auto">
+        <div className="mx-auto max-w-7xl px-4 pt-24 sm:px-6 lg:px-8">
           {children}
         </div>
       </main>

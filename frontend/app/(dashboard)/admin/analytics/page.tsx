@@ -28,7 +28,7 @@ export default function AdminAnalyticsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <header className="flex items-center justify-between gap-4">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-3xl font-display font-black text-white">Admin — Analytics</h1>
           <DashboardUserPanel />
         </header>

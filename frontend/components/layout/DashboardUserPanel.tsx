@@ -47,7 +47,7 @@ const DashboardUserPanel = ({ className }: DashboardUserPanelProps) => {
   }, []);
 
   return (
-    <div className={cn('flex items-center justify-end gap-3', className)}>
+    <div className={cn('flex min-w-0 items-center justify-end gap-3', className)}>
       <Link
         href="/notifications"
         aria-label="Open notifications"
@@ -61,7 +61,7 @@ const DashboardUserPanel = ({ className }: DashboardUserPanelProps) => {
         )}
       </Link>
 
-      <div className="relative" ref={panelRef}>
+      <div className="relative min-w-0" ref={panelRef}>
         <button
           type="button"
           onClick={() => setIsProfileOpen((prev) => !prev)}
@@ -80,9 +80,9 @@ const DashboardUserPanel = ({ className }: DashboardUserPanelProps) => {
         </button>
 
         {isProfileOpen && (
-          <div className="absolute right-0 top-full z-30 mt-2 w-52 rounded-xl border border-border bg-bg-card p-2 shadow-2xl">
+          <div className="absolute right-0 top-full z-30 mt-2 w-[min(20rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-bg-card p-2 shadow-2xl">
             <div className="border-b border-border/50 px-2 py-2">
-              <p className="truncate text-xs text-text-tertiary">{session?.user?.email}</p>
+              <p className="break-all text-xs text-text-tertiary">{session?.user?.email}</p>
             </div>
             <Link
               href="/profile"

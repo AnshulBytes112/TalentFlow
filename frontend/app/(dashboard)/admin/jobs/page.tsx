@@ -149,8 +149,8 @@ export default function AdminJobsPage() {
                 </div>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-3xl border border-border">
-                <table className="w-full min-w-[1100px] table-auto text-left">
+              <div className="w-full overflow-x-auto rounded-3xl border border-border">
+                <table className="w-full min-w-[920px] table-auto text-left xl:min-w-[1100px]">
                   <thead className="bg-bg-secondary/40">
                     <tr className="text-xs uppercase tracking-[0.25em] text-text-tertiary">
                       <th className="px-4 py-3">Job</th>

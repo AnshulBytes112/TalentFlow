@@ -45,13 +45,13 @@ export default function RecruiterJobsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header className="flex items-end justify-between gap-4">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-4xl font-display font-black text-white">My Jobs</h1>
             <p className="text-text-secondary mt-2">Manage and review all your job postings.</p>
           </div>
           <Link href="/recruiter/jobs/new">
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Plus size={16} className="mr-2" />
               Post New Job
             </Button>
@@ -82,8 +82,8 @@ export default function RecruiterJobsPage() {
                 </Link>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="w-full max-w-full overflow-x-auto">
+                <table className="w-full min-w-[700px] lg:min-w-0">
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-text-tertiary">Title</th>

@@ -38,7 +38,7 @@ export default function AdminApplicationsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <header className="flex items-center justify-between gap-4">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-3xl font-display font-black text-white">Admin — Applications</h1>
           <DashboardUserPanel />
         </header>
@@ -51,7 +51,7 @@ export default function AdminApplicationsPage() {
             {loading ? (
               <p className="text-sm text-text-tertiary">Loading...</p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="w-full overflow-x-auto">
                 <table className="w-full table-auto text-left">
                   <thead>
                     <tr className="text-sm text-text-tertiary">
