@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Mail, Lock, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
@@ -35,6 +35,8 @@ export default function ForgotPasswordPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const sendOtp = async () => {
     if (!formData.email) {
@@ -149,8 +151,18 @@ export default function ForgotPasswordPage() {
 
           <Input
             label="New Password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             leftIcon={<Lock size={18} />}
+            rightIcon={
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="hover:text-accent-primary transition-colors outline-none"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            }
             value={formData.password}
             onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
             required
@@ -158,8 +170,18 @@ export default function ForgotPasswordPage() {
 
           <Input
             label="Confirm New Password"
-            type="password"
+            type={showConfirmPassword ? 'text' : 'password'}
             leftIcon={<Lock size={18} />}
+            rightIcon={
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                className="hover:text-accent-primary transition-colors outline-none"
+                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            }
             value={formData.confirmPassword}
             onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
             required

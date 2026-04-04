@@ -105,7 +105,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
 
           {rightIcon && (
-            <div className="absolute right-4 flex items-center justify-center text-text-tertiary z-10">
+            <div className="absolute right-4 flex items-center justify-center text-text-tertiary z-40 pointer-events-auto">
               {rightIcon}
             </div>
           )}

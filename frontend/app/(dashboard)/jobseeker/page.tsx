@@ -107,6 +107,62 @@ export default function JobseekerDashboardPage() {
     };
   }, [applications]);
 
+  const statTrends = useMemo(() => {
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const currentWindowStart = now - THIRTY_DAYS_MS;
+    const previousWindowStart = now - THIRTY_DAYS_MS * 2;
+
+    const getTimestamp = (application: any) => {
+      const rawDate = application?.createdAt || application?.updatedAt;
+      const parsed = rawDate ? new Date(rawDate).getTime() : NaN;
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const currentWindowApps = applications.filter((application) => {
+      const timestamp = getTimestamp(application);
+      return timestamp !== null && timestamp >= currentWindowStart && timestamp <= now;
+    });
+
+    const previousWindowApps = applications.filter((application) => {
+      const timestamp = getTimestamp(application);
+      return timestamp !== null && timestamp >= previousWindowStart && timestamp < currentWindowStart;
+    });
+
+    const countBy = (list: any[], predicate: (application: any) => boolean) => list.filter(predicate).length;
+
+    const formatTrend = (current: number, previous: number) => {
+      if (previous === 0) {
+        if (current === 0) return { label: '0%', positive: true };
+        return { label: 'New', positive: true };
+      }
+
+      const percentChange = Math.round(((current - previous) / previous) * 100);
+      const prefix = percentChange > 0 ? '+' : '';
+
+      return {
+        label: `${prefix}${percentChange}%`,
+        positive: percentChange >= 0,
+      };
+    };
+
+    return {
+      total: formatTrend(currentWindowApps.length, previousWindowApps.length),
+      active: formatTrend(
+        countBy(currentWindowApps, (application) => !['offer', 'rejected', 'withdrawn'].includes(application.stage)),
+        countBy(previousWindowApps, (application) => !['offer', 'rejected', 'withdrawn'].includes(application.stage)),
+      ),
+      interviews: formatTrend(
+        countBy(currentWindowApps, (application) => application.stage === 'interview'),
+        countBy(previousWindowApps, (application) => application.stage === 'interview'),
+      ),
+      offers: formatTrend(
+        countBy(currentWindowApps, (application) => application.stage === 'offer'),
+        countBy(previousWindowApps, (application) => application.stage === 'offer'),
+      ),
+    };
+  }, [applications]);
+
   const containerAnimations = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -186,10 +242,10 @@ export default function JobseekerDashboardPage() {
             className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"
           >
             {[
-              { label: 'Total Applied', value: stats.total, trend: '+12%', icon: Briefcase, color: 'text-text-primary', bg: 'bg-elevated' },
-              { label: 'Active Progress', value: stats.active, trend: '+3', icon: TrendingUp, color: 'text-accent-primary', bg: 'bg-accent-primary/10' },
-              { label: 'Interviews', value: stats.interviews, trend: 'New', icon: Users, color: 'text-accent-secondary', bg: 'bg-accent-secondary/10' },
-              { label: 'Offers', value: stats.offers, trend: '+1', icon: CheckCircle2, color: 'text-luxury', bg: 'bg-luxury/10' },
+              { label: 'Total Applied', value: stats.total, trend: statTrends.total.label, trendPositive: statTrends.total.positive, icon: Briefcase, color: 'text-text-primary', bg: 'bg-elevated' },
+              { label: 'Active Progress', value: stats.active, trend: statTrends.active.label, trendPositive: statTrends.active.positive, icon: TrendingUp, color: 'text-accent-primary', bg: 'bg-accent-primary/10' },
+              { label: 'Interviews', value: stats.interviews, trend: statTrends.interviews.label, trendPositive: statTrends.interviews.positive, icon: Users, color: 'text-accent-secondary', bg: 'bg-accent-secondary/10' },
+              { label: 'Offers', value: stats.offers, trend: statTrends.offers.label, trendPositive: statTrends.offers.positive, icon: CheckCircle2, color: 'text-luxury', bg: 'bg-luxury/10' },
             ].map((stat, idx) => (
               <motion.div key={idx} variants={itemAnimations}>
                 <Card className="hover:border-border/80 transition-colors h-full">
@@ -198,7 +254,7 @@ export default function JobseekerDashboardPage() {
                       <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
                         <stat.icon size={20} />
                       </div>
-                      <span className={`text-[10px] font-black tracking-widest ${stat.trend === 'New' ? 'text-accent-secondary' : 'text-accent-primary'}`}>
+                      <span className={`text-[10px] font-black tracking-widest ${stat.trendPositive ? 'text-accent-primary' : 'text-accent-danger'}`}>
                         {stat.trend}
                       </span>
                     </div>
