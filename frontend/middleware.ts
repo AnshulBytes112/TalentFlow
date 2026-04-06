@@ -49,11 +49,11 @@ export default withAuth(
     if (pathname.startsWith('/admin') && token?.role !== 'admin') {
       return NextResponse.redirect(new URL(token?.role === 'recruiter' ? '/recruiter' : '/jobseeker', req.url));
     }
-    if (pathname.startsWith('/jobseeker') && token?.role !== 'jobseeker' && token?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/recruiter', req.url));
+    if (pathname.startsWith('/jobseeker') && token?.role !== 'jobseeker') {
+      return NextResponse.redirect(new URL(token?.role === 'admin' ? '/admin' : '/recruiter', req.url));
     }
-    if (pathname.startsWith('/recruiter') && token?.role !== 'recruiter' && token?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/jobseeker', req.url));
+    if (pathname.startsWith('/recruiter') && token?.role !== 'recruiter') {
+      return NextResponse.redirect(new URL(token?.role === 'admin' ? '/admin' : '/jobseeker', req.url));
     }
 
     return NextResponse.next();
