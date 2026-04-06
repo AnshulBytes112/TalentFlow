@@ -161,7 +161,7 @@ router.patch(
 router.get(
   '/jobs/:jobId/applications',
   verifyJWT,
-  roleGuard('recruiter', 'admin'),
+  roleGuard('recruiter'),
   jobIdValidation,
   validate,
   applicationController.getJobApplications

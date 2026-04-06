@@ -30,7 +30,7 @@ export default withAuth(
           return NextResponse.redirect(new URL(subPath, req.url));
         }
 
-        return NextResponse.redirect(new URL(`/admin${subPath}`, req.url));
+        return NextResponse.redirect(new URL('/admin', req.url));
       }
 
       const roleBase = token?.role === 'recruiter' ? '/recruiter' : '/jobseeker';
